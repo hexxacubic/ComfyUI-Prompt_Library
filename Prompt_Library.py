@@ -19,16 +19,16 @@ class Prompt_Library:
     def INPUT_TYPES(s):
         # list all subfolders under models/prompts
         cats = []
-        if os.path.isdir(os.path.join(folder_paths.models_dir, "prompts")):
-            for d in os.listdir(os.path.join(folder_paths.models_dir, "prompts")):
-                full = os.path.join(folder_paths.models_dir, "prompts", d)
-                if os.path.isdir(full):
+        base = os.path.join(folder_paths.models_dir, "prompts")
+        if os.path.isdir(base):
+            for d in os.listdir(base):
+                if os.path.isdir(os.path.join(base, d)):
                     cats.append(d)
 
         return {
             "required": {
                 "category": ("STRING", {"default": cats[0] if cats else ""}),
-                "project":  ("STRING", {"default": ""}),      # just name, no .txt
+                "project":  ("STRING", {"default": ""}),
                 "index":    ("INT",    {"default": 1, "min": 1, "max": 99}),
             }
         }
@@ -39,15 +39,11 @@ class Prompt_Library:
     CATEGORY     = "prompt"
 
     def get_prompt(self, category, project, index):
-        # build path
         folder = os.path.join(self.base_dir, category)
         path   = os.path.join(folder, project + ".txt")
-
         if not os.path.isfile(path):
-            # missing file → empty outputs
             return ("", "", category, index)
 
-        # parse “###N” sections and “---” separator
         projects = {}
         current  = None
         with open(path, encoding="utf-8") as f:
@@ -56,16 +52,14 @@ class Prompt_Library:
                 if line.startswith("###"):
                     try:
                         num = int(line[3:])
-                    except:
-                        current = None
-                    else:
                         current = num
                         projects[current] = []
+                    except:
+                        current = None
                 elif current is not None:
                     projects[current].append(line)
 
         lines = projects.get(index, [])
-        # split at ‘---’
         if '---' in lines:
             sep = lines.index('---')
             pos = "\n".join(lines[:sep]).strip()
@@ -77,7 +71,6 @@ class Prompt_Library:
         return (pos, neg, category, index)
 
 
-# node registration
 NODE_CLASS_MAPPINGS = {
     "Prompt_Library": Prompt_Library,
 }
