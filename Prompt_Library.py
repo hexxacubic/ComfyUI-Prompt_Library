@@ -4,9 +4,9 @@ import folder_paths
 class Prompt_Library:
     """
     • Category dropdown: lists all folders under /models/prompts/
-    • Project dropdown: lists .txt files based on selected category or all if none selected
-    • Index dropdown: lists only indices (###N) present in the selected file
-    • File is reloaded on each get_prompt call to reflect external changes
+    • Project dropdown: lists files in selected category (empty until category chosen)
+    • Index dropdown: lists only indices (###N) present in selected project file
+    • File reloaded on each get_prompt call to reflect external changes
     """
 
     def __init__(self):
@@ -15,19 +15,12 @@ class Prompt_Library:
     @classmethod
     def INPUT_TYPES(s):
         base = os.path.join(folder_paths.models_dir, "prompts")
-        # find all categories
-        cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
-        # initial project list (all projects)
-        projs = []
-        for cat in cats:
-            folder = os.path.join(base, cat)
-            for f in os.listdir(folder):
-                if f.lower().endswith(".txt"):
-                    projs.append(f[:-4])
+        # allow empty selection + all folder names
+        cats = [""] + sorted([d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))])
         return {
             "required": {
                 "category": (cats,),
-                "project":  (projs,),
+                "project":  ([],),
                 "index":    ([],),
             },
             "callbacks": {
@@ -45,28 +38,20 @@ class Prompt_Library:
 
     @classmethod
     def cb_category(cls, category):
-        """Update project list and clear index when category changes"""
+        # reset project list & clear index when category changes
         base = os.path.join(folder_paths.models_dir, "prompts")
         if not category:
-            # no category selected: include all projects
             projs = []
-            for cat in os.listdir(base):
-                path = os.path.join(base, cat)
-                if os.path.isdir(path):
-                    for f in os.listdir(path):
-                        if f.lower().endswith(".txt"):
-                            projs.append(f[:-4])
         else:
-            # projects from selected category only
             folder = os.path.join(base, category)
-            projs = [f[:-4] for f in os.listdir(folder) if f.lower().endswith(".txt")]
+            projs = sorted(f[:-4] for f in os.listdir(folder) if f.lower().endswith(".txt"))
         return {"project": projs, "index": []}
 
     @classmethod
     def cb_project(cls, category, project):
-        """Generate index list from '###' entries in the selected file"""
+        # build index list from ### entries in the selected file
         base = os.path.join(folder_paths.models_dir, "prompts")
-        path = os.path.join(base, category or "", project + ".txt")
+        path = os.path.join(base, category, project + ".txt")
         indices = []
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
@@ -83,7 +68,7 @@ class Prompt_Library:
 
     def get_prompt(self, category, project, index):
         # reload file on each call
-        path = os.path.join(self.base_dir, category or "", project + ".txt")
+        path = os.path.join(self.base_dir, category, project + ".txt")
         if not os.path.isfile(path):
             return ("", "", category, index)
 
