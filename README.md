@@ -1,5 +1,12 @@
 A custom node for comfy UI.
 The prompt library node gives you the ability to load prompt projects.
+
+The node has outputs in following order:
+1. positive string
+2. negative string
+3. category string
+4. variation index number (1 to 99)
+
 In the folder '/models/prompts' there are your category folders. In these category folders there should be your prompt project files.
 A prompt project file can store 99 projects or variations. The marker for the project index number is ### and the marker before the negative prompt is ---
 
