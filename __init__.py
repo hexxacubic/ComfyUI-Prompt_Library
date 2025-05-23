@@ -1,4 +1,4 @@
-from .prompt_library_node import Prompt_Library
+from .Prompt_Library_node import Prompt_Library
 
 NODE_CLASS_MAPPINGS = {
     "Prompt_Library": Prompt_Library,
