@@ -3,105 +3,83 @@ import folder_paths
 
 class Prompt_Library:
     """
-    • Category dropdown: lists all folders under /models/prompts/
-    • Project dropdown: lists files in selected category (empty until category chosen)
-    • Index dropdown: lists only indices (###N) present in selected project file
-    • File reloaded on each get_prompt call to reflect external changes
+    • project dropdown: '<category>/<project>' choices at init
+    • index dropdown: only ###N entries in the chosen file
+    • file reloaded every get_prompt
     """
 
     def __init__(self):
-        self.base_dir = os.path.join(folder_paths.models_dir, "prompts")
+        self.base = os.path.join(folder_paths.models_dir, "prompts")
 
     @classmethod
     def INPUT_TYPES(s):
+        # build combined list at node-load
         base = os.path.join(folder_paths.models_dir, "prompts")
-        # allow empty selection + all folder names
-        cats = [""] + sorted([d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))])
+        cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
+        proj_choices = []
+        for cat in sorted(cats):
+            folder = os.path.join(base, cat)
+            for fn in sorted(os.listdir(folder)):
+                if fn.lower().endswith(".txt"):
+                    name = fn[:-4]
+                    proj_choices.append(f"{cat}/{name}")
         return {
             "required": {
-                "category": (cats,),
-                "project":  ([],),
-                "index":    ([],),
+                "project": (proj_choices,),
+                "index":   ([],),
             },
             "callbacks": {
                 "on_ui_set": {
-                    "category": "cb_category",
-                    "project":  "cb_project",
+                    "project": "cb_project",
                 }
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
+    RETURN_TYPES = ("STRING","STRING","STRING","INT")
     FUNCTION     = "get_prompt"
     OUTPUT_NODE  = True
     CATEGORY     = "hexxacubic"
 
     @classmethod
-    def cb_category(cls, category):
-        # reset project list & clear index when category changes
-        base = os.path.join(folder_paths.models_dir, "prompts")
-        if not category:
-            projs = []
-        else:
-            folder = os.path.join(base, category)
-            projs = sorted(f[:-4] for f in os.listdir(folder) if f.lower().endswith(".txt"))
-        return {"project": projs, "index": []}
-
-    @classmethod
-    def cb_project(cls, category, project):
-        # build index list from ### entries in the selected file
-        base = os.path.join(folder_paths.models_dir, "prompts")
-        path = os.path.join(base, category, project + ".txt")
-        indices = []
+    def cb_project(cls, project):
+        # project is "category/name"
+        cat,name = project.split("/",1)
+        path = os.path.join(folder_paths.models_dir, "prompts", cat, name + ".txt")
+        idxs = []
         if os.path.isfile(path):
             with open(path, encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("###"):
+                for L in f:
+                    if L.startswith("###"):
                         try:
-                            idx = int(line[3:])
-                            if idx not in indices:
-                                indices.append(idx)
-                        except:
-                            pass
-            indices.sort()
-        return {"index": indices}
+                            n = int(L[3:])
+                            if n not in idxs: idxs.append(n)
+                        except: pass
+            idxs.sort()
+        return {"index": idxs}
 
-    def get_prompt(self, category, project, index):
-        # reload file on each call
-        path = os.path.join(self.base_dir, category, project + ".txt")
+    def get_prompt(self, project, index):
+        cat,name = project.split("/",1)
+        path = os.path.join(self.base, cat, name + ".txt")
         if not os.path.isfile(path):
-            return ("", "", category, index)
-
-        sections = {}
-        current = None
+            return ("","","",index)
+        sections, cur = {}, None
         with open(path, encoding="utf-8") as f:
             for raw in f:
-                line = raw.rstrip("\n")
-                if line.startswith("###"):
+                L = raw.rstrip("\n")
+                if L.startswith("###"):
                     try:
-                        num = int(line[3:])
-                        current = num
-                        sections[current] = []
-                    except:
-                        current = None
-                elif current is not None:
-                    sections[current].append(line)
-
+                        num = int(L[3:]); cur = num; sections[cur]=[]
+                    except: cur=None
+                elif cur is not None:
+                    sections[cur].append(L)
         lines = sections.get(index, [])
         if '---' in lines:
-            sep = lines.index('---')
-            pos = "\n".join(lines[:sep]).strip()
-            neg = "\n".join(lines[sep+1:]).strip()
+            s = lines.index('---')
+            pos = "\n".join(lines[:s]).strip()
+            neg = "\n".join(lines[s+1:]).strip()
         else:
-            pos = "\n".join(lines).strip()
-            neg = ""
+            pos,neg = "\n".join(lines).strip(), ""
+        return (pos, neg, project, index)
 
-        return (pos, neg, category, index)
-
-
-NODE_CLASS_MAPPINGS = {
-    "Prompt_Library": Prompt_Library,
-}
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "Prompt Library": "Prompt_Library",
-}
+NODE_CLASS_MAPPINGS = {"Prompt_Library":Prompt_Library}
+NODE_DISPLAY_NAME_MAPPINGS = {"Prompt Library":"Prompt_Library"}
