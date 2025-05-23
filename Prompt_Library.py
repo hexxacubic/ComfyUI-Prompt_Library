@@ -1,56 +1,57 @@
 import os
 import folder_paths
+import random
 
 class Prompt_Library:
     """
-    ComfyUI node that lets you pick:
-      • a category (folder under models/prompts/)
-      • a project file (TXT under that folder, suffix .txt omitted in UI)
-      • an index (based on actual ### markers in file)
-    Outputs: pos_prompt, neg_prompt, category_name, index
+    • project dropdown: '<category>/<project>' choices at init  
+    • index slider: free int from 1 to 99  
+    • randomize flag: integer 0 or 1 to choose random index when 1  
+    • file reloaded every get_prompt call to reflect external changes  
     """
 
     def __init__(self):
-        self.base_dir = os.path.join(folder_paths.models_dir, "prompts")
+        self.base = os.path.join(folder_paths.models_dir, "prompts")
 
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(s):
         base = os.path.join(folder_paths.models_dir, "prompts")
-        cats = []
-        projects = []
-
-        if os.path.isdir(base):
-            for d in os.listdir(base):
-                full_path = os.path.join(base, d)
-                if os.path.isdir(full_path):
-                    cats.append(d)
-                    for f in os.listdir(full_path):
-                        if f.lower().endswith(".txt"):
-                            projects.append(f[:-4])
-
+        # build combined project list at node-load
+        cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
+        proj_choices = []
+        for cat in sorted(cats):
+            folder = os.path.join(base, cat)
+            for fn in sorted(os.listdir(folder)):
+                if fn.lower().endswith(".txt"):
+                    name = fn[:-4]
+                    proj_choices.append(f"{cat}/{name}")
         return {
             "required": {
-                "category": (cats,) if cats else ("",),
-                "project": (projects,) if projects else ("",),
-                "index": ("INT", {"default": 1, "min": 1, "max": 999}),
+                "project":   (proj_choices,),
+                "index":     ("INT",  {"default": 1, "min": 1, "max": 99}),
+                "randomize": ("INT",  {"default": 0, "min": 0, "max": 1}),
             }
         }
 
     RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
-    FUNCTION = "get_prompt"
-    OUTPUT_NODE = True
-    CATEGORY = "hexxacubic"
+    FUNCTION     = "get_prompt"
+    OUTPUT_NODE  = True
+    CATEGORY     = "hexxacubic"
 
-    def get_prompt(self, category, project, index):
-        folder = os.path.join(self.base_dir, category)
-        path = os.path.join(folder, project + ".txt")
+    def get_prompt(self, project, index, randomize):
+        # split category/project
+        try:
+            cat, name = project.split("/", 1)
+        except ValueError:
+            return ("", "", project, index)
 
+        path = os.path.join(self.base, cat, name + ".txt")
         if not os.path.isfile(path):
-            return ("", "", category, index)
+            return ("", "", project, index)
 
-        prompts = {}
+        # parse file into sections keyed by ###N
+        sections = {}
         current = None
-
         with open(path, encoding="utf-8") as f:
             for raw in f:
                 line = raw.rstrip("\n")
@@ -58,23 +59,21 @@ class Prompt_Library:
                     try:
                         num = int(line[3:])
                         current = num
-                        prompts[current] = []
+                        sections[current] = []
                     except:
                         current = None
                 elif current is not None:
-                    prompts[current].append(line)
+                    sections[current].append(line)
 
-        if index not in prompts:
-            valid_indexes = sorted(prompts.keys())
-            next_index = next((i for i in valid_indexes if i > index), None)
-            if next_index is None and valid_indexes:
-                index = valid_indexes[0]
-            elif next_index:
-                index = next_index
-            else:
-                return ("", "", category, index)
+        # decide which index to use
+        if randomize == 1:
+            max_idx = max(sections.keys()) if sections else 1
+            idx = random.randint(1, max_idx)
+        else:
+            idx = index
 
-        lines = prompts.get(index, [])
+        # extract pos/neg prompts
+        lines = sections.get(idx, [])
         if '---' in lines:
             sep = lines.index('---')
             pos = "\n".join(lines[:sep]).strip()
@@ -83,7 +82,7 @@ class Prompt_Library:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        return (pos, neg, category, index)
+        return (pos, neg, project, idx)
 
 
 NODE_CLASS_MAPPINGS = {
