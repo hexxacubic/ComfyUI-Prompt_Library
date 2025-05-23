@@ -16,7 +16,6 @@ class Prompt_Library:
     @classmethod
     def INPUT_TYPES(s):
         base = os.path.join(folder_paths.models_dir, "prompts")
-        # build combined project list at node-load
         cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
         proj_choices = []
         for cat in sorted(cats):
@@ -39,22 +38,22 @@ class Prompt_Library:
     CATEGORY     = "hexxacubic"
 
     def get_prompt(self, project, index, randomize):
-        # split category/project
+        # split 'category/project'
         try:
-            cat, name = project.split("/", 1)
+            category, name = project.split("/", 1)
         except ValueError:
             return "", "", project, index
 
-        path = os.path.join(self.base, cat, name + ".txt")
+        path = os.path.join(self.base, category, name + ".txt")
         if not os.path.isfile(path):
             return "", "", project, index
 
-        # parse file into sections keyed by ###N
+        # parse file sections keyed by '###N'
         sections = {}
         current = None
         with open(path, encoding="utf-8") as f:
-            for raw in f:
-                line = raw.rstrip("\n")
+            for line in f:
+                line = line.rstrip("\n")
                 if line.startswith("###"):
                     try:
                         num = int(line[3:])
@@ -65,15 +64,15 @@ class Prompt_Library:
                 elif current is not None:
                     sections[current].append(line)
 
-        # determine final index using formula: randomize*x + (1-randomize)*index
-        if randomize == 1 and sections:
+        # determine final idx via formula
+        if sections and randomize in (0, 1):
             max_idx = max(sections.keys())
-            x = random.randint(1, max_idx)
-            idx = randomize * x + (1 - randomize) * index
+            idx = randomize * random.randint(1, max_idx) + (1 - randomize) * index
+            idx = int(idx)
         else:
             idx = index
 
-        # extract pos/neg prompts
+        # extract prompts
         lines = sections.get(idx, [])
         if '---' in lines:
             sep = lines.index('---')
