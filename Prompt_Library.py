@@ -65,12 +65,14 @@ class Prompt_Library:
                 elif current is not None:
                     sections[current].append(line)
 
-        # choose index: ignore slider value if randomize == 1
-        if randomize == 1:
-            max_idx = max(sections.keys()) if sections else index
-            idx = random.randint(1, max_idx)
+        # compute random x within available indices
+        if sections:
+            max_idx = max(sections.keys())
+            x = random.randint(1, max_idx)
         else:
-            idx = index
+            x = index
+        # apply formula: idx = r*x + (1-r)*i
+        idx = randomize * x + (1 - randomize) * index
 
         # extract pos/neg prompts
         lines = sections.get(idx, [])
