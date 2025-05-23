@@ -43,11 +43,11 @@ class Prompt_Library:
         try:
             cat, name = project.split("/", 1)
         except ValueError:
-            return ("", "", project, index)
+            return "", "", project, index
 
         path = os.path.join(self.base, cat, name + ".txt")
         if not os.path.isfile(path):
-            return ("", "", project, index)
+            return "", "", project, index
 
         # parse file into sections keyed by ###N
         sections = {}
@@ -65,14 +65,13 @@ class Prompt_Library:
                 elif current is not None:
                     sections[current].append(line)
 
-        # compute random x within available indices
-        if sections:
+        # determine final index using formula: randomize*x + (1-randomize)*index
+        if randomize == 1 and sections:
             max_idx = max(sections.keys())
             x = random.randint(1, max_idx)
+            idx = randomize * x + (1 - randomize) * index
         else:
-            x = index
-        # apply formula: idx = r*x + (1-r)*i
-        idx = randomize * x + (1 - randomize) * index
+            idx = index
 
         # extract pos/neg prompts
         lines = sections.get(idx, [])
@@ -84,8 +83,7 @@ class Prompt_Library:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        return (pos, neg, project, idx)
-
+        return pos, neg, project, idx
 
 NODE_CLASS_MAPPINGS = {"Prompt_Library": Prompt_Library}
 NODE_DISPLAY_NAME_MAPPINGS = {"Prompt Library": "Prompt_Library"}
