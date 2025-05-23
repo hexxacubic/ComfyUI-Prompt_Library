@@ -58,7 +58,7 @@ class Prompt_Library:
     RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
     FUNCTION     = "get_prompt"
     OUTPUT_NODE  = True
-    CATEGORY     = "prompt"
+    CATEGORY     = "hexxacubic"
 
     def get_prompt(self, category, project, index):
         folder = os.path.join(self.base_dir, category)
