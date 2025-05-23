@@ -7,7 +7,8 @@ Project file path example:
 /models/prompts/animals/cute_dog.txt
 
 
-Here an example how a prompt project file should look:
+Here an example how a prompt project file should look.
+Note: GitHub may automatically apply unintended formatting to the example syntax below (e.g., headers or horizontal lines). This is purely a visual issue and does not affect the actual file structure or functionality.
 
 ###1
 cute dog, depth of field, (bokeh:0.3), plants in background, (park:0.5),
