@@ -65,9 +65,9 @@ class Prompt_Library:
                 elif current is not None:
                     sections[current].append(line)
 
-        # decide which index to use
+        # choose index: ignore slider value if randomize == 1
         if randomize == 1:
-            max_idx = max(sections.keys()) if sections else 1
+            max_idx = max(sections.keys()) if sections else index
             idx = random.randint(1, max_idx)
         else:
             idx = index
@@ -85,9 +85,5 @@ class Prompt_Library:
         return (pos, neg, project, idx)
 
 
-NODE_CLASS_MAPPINGS = {
-    "Prompt_Library": Prompt_Library,
-}
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "Prompt Library": "Prompt_Library",
-}
+NODE_CLASS_MAPPINGS = {"Prompt_Library": Prompt_Library}
+NODE_DISPLAY_NAME_MAPPINGS = {"Prompt Library": "Prompt_Library"}
