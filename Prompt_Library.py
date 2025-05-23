@@ -33,25 +33,10 @@ class Prompt_Library:
                     projects.append(f[:-4])
         return {
             "required": {
-                "category": (
-                    "STRING", {
-                        "default": cats[0] if cats else "",
-                        "choices": cats
-                    }
-                ),
-                "project": (
-                    "STRING", {
-                        "default": projects[0] if projects else "",
-                        "choices": projects
-                    }
-                ),
-                "index": (
-                    "INT", {
-                        "default": 1,
-                        "min": 1,
-                        "max": 99
-                    }
-                ),
+                # COMBO: list[str] im Tuple = Dropdown; erstes Element ist default
+                "category": (cats,),
+                "project":  (projects,),
+                "index":    ("INT", {"default": 1, "min": 1, "max": 99}),
             }
         }
 
