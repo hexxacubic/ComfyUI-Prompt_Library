@@ -15,7 +15,7 @@ class Prompt_Library:
         # base dir for your prompt libraries
         self.base_dir = os.path.join(folder_paths.models_dir, "prompts")
 
-       @classmethod
+    @classmethod
     def INPUT_TYPES(s):
         base = os.path.join(folder_paths.models_dir, "prompts")
         # alle Kategorien ermitteln
