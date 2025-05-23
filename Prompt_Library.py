@@ -3,40 +3,38 @@ import folder_paths
 
 class Prompt_Library:
     """
-    ComfyUI node that lets you pick:
-      • a category (folder under models/prompts/)
-      • a project file (TXT under that folder, suffix .txt omitted in UI)
-      • an index (1–99)
-    and then parses that file for the positive vs. negative prompt.
-    Outputs: pos_prompt, neg_prompt, category_name, index
+    • Category dropdown: lists all folders under /models/prompts/
+    • Project dropdown: lists .txt files based on selected category or all if none selected
+    • Index dropdown: lists only indices (###N) present in the selected file
+    • File is reloaded on each get_prompt call to reflect external changes
     """
 
     def __init__(self):
-        # base dir for your prompt libraries
         self.base_dir = os.path.join(folder_paths.models_dir, "prompts")
 
     @classmethod
     def INPUT_TYPES(s):
         base = os.path.join(folder_paths.models_dir, "prompts")
-        # alle Kategorien ermitteln
-        cats = []
-        if os.path.isdir(base):
-            for d in os.listdir(base):
-                if os.path.isdir(os.path.join(base, d)):
-                    cats.append(d)
-        # alle Projekte (TXT-Dateien) aus allen Kategorien sammeln
-        projects = []
+        # find all categories
+        cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
+        # initial project list (all projects)
+        projs = []
         for cat in cats:
             folder = os.path.join(base, cat)
             for f in os.listdir(folder):
                 if f.lower().endswith(".txt"):
-                    projects.append(f[:-4])
+                    projs.append(f[:-4])
         return {
             "required": {
-                # COMBO: list[str] im Tuple = Dropdown; erstes Element ist default
                 "category": (cats,),
-                "project":  (projects,),
-                "index":    ("INT", {"default": 1, "min": 1, "max": 99}),
+                "project":  (projs,),
+                "index":    ([],),
+            },
+            "callbacks": {
+                "on_ui_set": {
+                    "category": "cb_category",
+                    "project":  "cb_project",
+                }
             }
         }
 
@@ -45,14 +43,52 @@ class Prompt_Library:
     OUTPUT_NODE  = True
     CATEGORY     = "hexxacubic"
 
+    @classmethod
+    def cb_category(cls, category):
+        """Update project list and clear index when category changes"""
+        base = os.path.join(folder_paths.models_dir, "prompts")
+        if not category:
+            # no category selected: include all projects
+            projs = []
+            for cat in os.listdir(base):
+                path = os.path.join(base, cat)
+                if os.path.isdir(path):
+                    for f in os.listdir(path):
+                        if f.lower().endswith(".txt"):
+                            projs.append(f[:-4])
+        else:
+            # projects from selected category only
+            folder = os.path.join(base, category)
+            projs = [f[:-4] for f in os.listdir(folder) if f.lower().endswith(".txt")]
+        return {"project": projs, "index": []}
+
+    @classmethod
+    def cb_project(cls, category, project):
+        """Generate index list from '###' entries in the selected file"""
+        base = os.path.join(folder_paths.models_dir, "prompts")
+        path = os.path.join(base, category or "", project + ".txt")
+        indices = []
+        if os.path.isfile(path):
+            with open(path, encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("###"):
+                        try:
+                            idx = int(line[3:])
+                            if idx not in indices:
+                                indices.append(idx)
+                        except:
+                            pass
+            indices.sort()
+        return {"index": indices}
+
     def get_prompt(self, category, project, index):
-        folder = os.path.join(self.base_dir, category)
-        path   = os.path.join(folder, project + ".txt")
+        # reload file on each call
+        path = os.path.join(self.base_dir, category or "", project + ".txt")
         if not os.path.isfile(path):
             return ("", "", category, index)
 
-        projects = {}
-        current  = None
+        sections = {}
+        current = None
         with open(path, encoding="utf-8") as f:
             for raw in f:
                 line = raw.rstrip("\n")
@@ -60,13 +96,13 @@ class Prompt_Library:
                     try:
                         num = int(line[3:])
                         current = num
-                        projects[current] = []
+                        sections[current] = []
                     except:
                         current = None
                 elif current is not None:
-                    projects[current].append(line)
+                    sections[current].append(line)
 
-        lines = projects.get(index, [])
+        lines = sections.get(index, [])
         if '---' in lines:
             sep = lines.index('---')
             pos = "\n".join(lines[:sep]).strip()
