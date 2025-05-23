@@ -15,21 +15,43 @@ class Prompt_Library:
         # base dir for your prompt libraries
         self.base_dir = os.path.join(folder_paths.models_dir, "prompts")
 
-    @classmethod
+       @classmethod
     def INPUT_TYPES(s):
-        # list all subfolders under models/prompts
-        cats = []
         base = os.path.join(folder_paths.models_dir, "prompts")
+        # alle Kategorien ermitteln
+        cats = []
         if os.path.isdir(base):
             for d in os.listdir(base):
                 if os.path.isdir(os.path.join(base, d)):
                     cats.append(d)
-
+        # alle Projekte (TXT-Dateien) aus allen Kategorien sammeln
+        projects = []
+        for cat in cats:
+            folder = os.path.join(base, cat)
+            for f in os.listdir(folder):
+                if f.lower().endswith(".txt"):
+                    projects.append(f[:-4])
         return {
             "required": {
-                "category": ("STRING", {"default": cats[0] if cats else ""}),
-                "project":  ("STRING", {"default": ""}),
-                "index":    ("INT",    {"default": 1, "min": 1, "max": 99}),
+                "category": (
+                    "STRING", {
+                        "default": cats[0] if cats else "",
+                        "choices": cats
+                    }
+                ),
+                "project": (
+                    "STRING", {
+                        "default": projects[0] if projects else "",
+                        "choices": projects
+                    }
+                ),
+                "index": (
+                    "INT", {
+                        "default": 1,
+                        "min": 1,
+                        "max": 99
+                    }
+                ),
             }
         }
 
