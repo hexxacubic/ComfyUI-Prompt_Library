@@ -22,21 +22,11 @@ class Random_Project:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries": {
-                    "type": "STRING",
-                    "multiline": True,
-                    "default": ""
-                },
-                "seed": {
-                    "type": "INT",
-                    "default": 0,
-                    "min": 0
-                },
-                "control_after_generate": {
-                    "type": "STRING",
-                    "default": "randomize",
-                    "choices": ["randomize", "seed"]
-                }
+                "entries":                ("STRING", {"multiline": True, "default": ""}),
+                "seed":                   ("INT",    {"default": 0, "min": 0}),
+                "control_after_generate":(
+                    "STRING", {"default": "randomize", "choices": ["randomize", "seed"]}
+                ),
             }
         }
 
