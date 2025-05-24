@@ -1,4 +1,5 @@
 import random
+import hashlib
 
 class Random_Project:
     """
@@ -8,11 +9,11 @@ class Random_Project:
         positive Prompt-Zeilen
         ---
         negative Prompt-Zeilen
-      für beliebige X (nicht zwingend zusammenhängend).
-    • seed: Ganzzahliger Seed (0 = kein Seed)
+      für beliebige X (nicht zwangsläufig lückenlos).
+    • seed: String (beliebige Länge), wird per SHA256 → Integer gemappt.
     • control_after_generate: "randomize" oder "seed"
-        - randomize: wähle zufällig (optional vorinitialisiert mit seed)
-        - seed: deterministische Auswahl via Wrap-Modulo
+        - randomize: wähle echt zufällig (wenn seed gesetzt, initialisiere RNG damit)
+        - seed: deterministische Auswahl via (seed_int-1) % Anzahl_Einträge
     Outputs:
     • pos (STRING): positiver Prompt
     • neg (STRING): negativer Prompt
@@ -23,7 +24,7 @@ class Random_Project:
         return {
             "required": {
                 "entries":                ("STRING", {"multiline": True, "default": ""}),
-                "seed":                   ("INT",    {"default": 0, "min": 0}),
+                "seed":                   ("STRING", {"default": ""}),
                 "control_after_generate": (
                     "STRING",
                     {
@@ -64,18 +65,27 @@ class Random_Project:
         if not sections:
             return "", ""
 
-        # 2) Auswahl des Keys
+        # 2) Seed-String → Integer via SHA256 (0 bei leerem String)
+        if seed:
+            h = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+            seed_int = int(h, 16)
+        else:
+            seed_int = 0
+
+        # sortierte Keys für Modulo-Logik
         sorted_keys = sorted(sections.keys())
 
+        # 3) Auswahl
         if control_after_generate == "randomize":
-            if seed:
-                random.seed(seed)
+            # wenn ein seed kommt, initialisiere RNG damit
+            if seed_int:
+                random.seed(seed_int)
             idx = random.choice(sorted_keys)
         else:  # control_after_generate == "seed"
-            # wrap mit Modulo auf die Länge der vorhandenen Keys
-            idx = sorted_keys[(seed - 1) % len(sorted_keys)]
+            # (seed_int-1) mod N → wählt eine deterministische Position
+            idx = sorted_keys[(seed_int - 1) % len(sorted_keys)]
 
-        # 3) Prompt-Zeilen zusammensetzen
+        # 4) Prompt-Zeilen zusammensetzen
         chosen = sections[idx]
         pos = "\n".join(chosen["pos"]).strip()
         neg = "\n".join(chosen["neg"]).strip()
