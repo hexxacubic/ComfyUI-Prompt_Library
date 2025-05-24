@@ -1,5 +1,4 @@
 import random
-import hashlib
 
 class Random_Project:
     """
@@ -12,7 +11,7 @@ class Random_Project:
       for arbitrary X values (not necessarily contiguous).
     • seed: integer seed (0 = no seed), adjustable via arrows or keyboard input
     • control_after_generate: dropdown selection with arrows
-        - "randomize": choose a truly random entry (if seed is provided, RNG is seeded accordingly)
+        - "randomize": choose a truly random entry (RNG can be seeded via 'seed')
         - "seed": deterministic selection using (seed - 1) % number_of_entries
     Outputs:
     • pos (STRING): selected positive prompt
@@ -23,15 +22,21 @@ class Random_Project:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries": ("STRING", {"multiline": True, "default": ""}),
-                "seed":    ("INT",    {"default": 0, "min": 0}),
-                "control_after_generate": (
-                    "STRING",
-                    {
-                        "default": "randomize",
-                        "choices": ["randomize", "seed"]
-                    }
-                ),
+                "entries": {
+                    "type": "STRING",
+                    "multiline": True,
+                    "default": ""
+                },
+                "seed": {
+                    "type": "INT",
+                    "default": 0,
+                    "min": 0
+                },
+                "control_after_generate": {
+                    "type": "STRING",
+                    "default": "randomize",
+                    "choices": ["randomize", "seed"]
+                }
             }
         }
 
@@ -41,7 +46,7 @@ class Random_Project:
     CATEGORY     = "hexxacubic"
 
     def random_project(self, entries, seed, control_after_generate):
-        # Parse the entries into sections keyed by integer identifiers
+        # Parse entries into sections keyed by integer identifiers
         sections = {}
         current = None
         for raw_line in entries.splitlines():
@@ -62,24 +67,22 @@ class Random_Project:
                     bucket = "neg" if sections[current]["in_neg"] else "pos"
                     sections[current][bucket].append(line)
 
-        # If no valid sections are found, return empty strings
+        # Return empty outputs if no valid sections found
         if not sections:
             return "", ""
 
-        # Sort the available section keys
+        # Sort the available section keys for consistent ordering
         sorted_keys = sorted(sections.keys())
 
-        # Determine which section to choose
+        # Choose the target section
         if control_after_generate == "randomize":
-            # Seed the RNG if provided
             if seed:
                 random.seed(seed)
             idx = random.choice(sorted_keys)
         else:  # control_after_generate == "seed"
-            # Use modulo to wrap the seed to a valid index
             idx = sorted_keys[(seed - 1) % len(sorted_keys)]
 
-        # Build the output prompts
+        # Build and return the outputs
         chosen = sections[idx]
         pos = "\n".join(chosen["pos"]).strip()
         neg = "\n".join(chosen["neg"]).strip()
