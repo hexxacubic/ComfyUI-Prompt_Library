@@ -10,8 +10,8 @@ class Random_Project:
         negative prompt lines
       for arbitrary X values (not necessarily contiguous).
     • seed: integer seed (0 = no seed), adjustable via arrows
-    • control_after_generate: integer spinner (0 = randomize, 1 = seed)
-        - 0: random selection (seed optional for determinism)
+    • control_after_generate: integer spinner (0 = random selection, 1 = deterministic seed-mode)
+        - 0: random selection (seed seeds RNG if >0)
         - 1: deterministic selection using (seed - 1) % number_of_entries
     Outputs:
     • pos (STRING): selected positive prompt
@@ -19,7 +19,7 @@ class Random_Project:
     """
 
     @classmethod
-    def INPUT_TYPES(cls):
+    def INPUT_TYPES(cls):(cls):
         return {
             "required": {
                 "entries":                ("STRING", {"multiline": True, "default": ""}),
