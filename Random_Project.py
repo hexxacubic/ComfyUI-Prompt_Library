@@ -18,15 +18,15 @@ class Random_Project:
     • neg (STRING): selected negative prompt
     """
 
-    @classmethod
-    def INPUT_TYPES(cls):(cls):
-        return {
-            "required": {
-                "entries":                ("STRING", {"multiline": True, "default": ""}),
-                "seed":                   ("INT",    {"default": 0, "min": 0}),
-                "control_after_generate": ("INT",    {"default": 0, "min": 0, "max": 1}),
-            }
+@classmethod
+def INPUT_TYPES(cls):
+    return {
+        "required": {
+            "entries":                ("STRING", {"multiline": True, "default": ""}),
+            "seed":                   ("INT",    {"default": 0, "min": 0}),
+            "control_after_generate": ("INT",    {"default": 0, "min": 0, "max": 1}),
         }
+    }
 
     RETURN_TYPES = ("STRING", "STRING")
     FUNCTION     = "random_project"
