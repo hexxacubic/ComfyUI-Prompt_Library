@@ -10,11 +10,7 @@ class Random_Project:
         negative prompt lines
       for arbitrary X values (not necessarily contiguous).
     • seed: integer seed (1-based index), adjustable via arrows
-    • control_after_generate: dropdown selection with choices:
-        - "fixed": deterministic selection using (seed - 1) % number_of_entries
-        - "increment": selection at position (seed) % number_of_entries
-        - "decrement": selection at position (seed - 2) % number_of_entries
-        - "randomize": random selection (RNG seeded by seed if provided)
+    • control_after_generate: integer spinner (0 = fixed, 1 = increment, 2 = decrement, 3 = randomize)
     Outputs:
     • pos (STRING): selected positive prompt
     • neg (STRING): selected negative prompt
@@ -25,22 +21,18 @@ class Random_Project:
         return {
             "required": {
                 "entries": ("STRING", {"multiline": True, "default": ""}),
-                "seed":    ("INT",    {"default": 1, "min": 1}),
+                "seed": ("INT", {"default": 1, "min": 1}),
                 "control_after_generate": ("INT", {"default": 0, "min": 0, "max": 3}),
             }
         }
 
-                ),
-            }
-        }
-
     RETURN_TYPES = ("STRING", "STRING")
-    FUNCTION     = "random_project"
-    OUTPUT_NODE  = True
-    CATEGORY     = "hexxacubic"
+    FUNCTION = "random_project"
+    OUTPUT_NODE = True
+    CATEGORY = "hexxacubic"
 
     def random_project(self, entries, seed, control_after_generate):
-        # parse entries into sections keyed by integer identifiers
+        # Parse entries into sections keyed by integer identifiers
         sections = {}
         current = None
         for line in entries.splitlines():
@@ -61,34 +53,28 @@ class Random_Project:
                     bucket = "neg" if sections[current]["in_neg"] else "pos"
                     sections[current][bucket].append(line)
 
-        # return empty strings if no valid sections found
+        # Return empty if no valid sections
         if not sections:
             return "", ""
 
-        # sorted keys ensures consistent ordering
+        # Determine sorted keys
         keys = sorted(sections.keys())
         n = len(keys)
 
-        # determine selection index based on control_after_generate
-        # determine selection index based on control_after_generate
-        if control_after_generate == 0:
-            # fixed
+        # Selection logic
+        if control_after_generate == 0:  # fixed
             idx = keys[(seed - 1) % n]
-        elif control_after_generate == 1:
-            # increment
+        elif control_after_generate == 1:  # increment
             idx = keys[(seed) % n]
-        elif control_after_generate == 2:
-            # decrement
+        elif control_after_generate == 2:  # decrement
             idx = keys[(seed - 2) % n]
-        elif control_after_generate == 3:
-            # randomize
+        elif control_after_generate == 3:  # randomize
             random.seed(seed)
             idx = random.choice(keys)
-        else:
-            # fallback to fixed
+        else:  # fallback
             idx = keys[(seed - 1) % n]
 
-        # assemble and return prompts and return prompts
+        # Assemble outputs
         data = sections[idx]
         pos = "\n".join(data["pos"]).strip()
         neg = "\n".join(data["neg"]).strip()
