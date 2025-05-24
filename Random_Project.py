@@ -20,9 +20,15 @@ class Random_Project:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries": ("STRING", {"multiline": True, "default": ""}),
-                "seed": ("INT", {"default": 1, "min": 1}),
-                "control_after_generate": ("INT", {"default": 0, "min": 0, "max": 3}),
+                "entries":                ("STRING", {"multiline": True, "default": ""}),
+                "seed":                   ("INT",    {"default": 1, "min": 1}),
+                "control_after_generate": (
+                    "STRING",
+                    {
+                        "default": "fixed",
+                        "choices": ["fixed","increment","decrement","randomize"]
+                    }
+                ),
             }
         }
 
