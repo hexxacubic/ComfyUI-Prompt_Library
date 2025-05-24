@@ -10,9 +10,9 @@ class Random_Project:
         negative prompt lines
       for arbitrary X values (not necessarily contiguous).
     • seed: integer seed (0 = no seed), adjustable via arrows
-    • mode: integer spinner (0 = randomize, 1 = seed)
-      - 0: choose a truly random entry (seed optional for determinism)
-      - 1: deterministic selection using (seed - 1) % number_of_entries
+    • control_after_generate: integer spinner (0 = randomize, 1 = seed)
+        - 0: random selection (seed optional for determinism)
+        - 1: deterministic selection using (seed - 1) % number_of_entries
     Outputs:
     • pos (STRING): selected positive prompt
     • neg (STRING): selected negative prompt
@@ -22,9 +22,9 @@ class Random_Project:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries": ("STRING", {"multiline": True, "default": ""}),
-                "seed":    ("INT",    {"default": 0, "min": 0}),
-                "mode":    ("INT",    {"default": 0, "min": 0, "max": 1}),
+                "entries":                ("STRING", {"multiline": True, "default": ""}),
+                "seed":                   ("INT",    {"default": 0, "min": 0}),
+                "control_after_generate": ("INT",    {"default": 0, "min": 0, "max": 1}),
             }
         }
 
@@ -33,7 +33,7 @@ class Random_Project:
     OUTPUT_NODE  = True
     CATEGORY     = "hexxacubic"
 
-    def random_project(self, entries, seed, mode):
+    def random_project(self, entries, seed, control_after_generate):
         # parse entries into sections keyed by integer identifiers
         sections = {}
         current = None
@@ -62,8 +62,8 @@ class Random_Project:
         # determine valid keys in sorted order
         keys = sorted(sections.keys())
 
-        # choose index
-        if mode == 0:
+        # choose index based on control flag
+        if control_after_generate == 0:
             if seed:
                 random.seed(seed)
             choice = random.choice(keys)
