@@ -26,12 +26,10 @@ class Random_Project:
             "required": {
                 "entries": ("STRING", {"multiline": True, "default": ""}),
                 "seed":    ("INT",    {"default": 1, "min": 1}),
-                "control_after_generate": (
-                    "STRING",
-                    {
-                        "default": "fixed",
-                        "choices": ["fixed", "increment", "decrement", "randomize"]
-                    }
+                "control_after_generate": ("INT", {"default": 0, "min": 0, "max": 3}),
+            }
+        }
+
                 ),
             }
         }
@@ -72,21 +70,25 @@ class Random_Project:
         n = len(keys)
 
         # determine selection index based on control_after_generate
-        if control_after_generate == "fixed":
+        # determine selection index based on control_after_generate
+        if control_after_generate == 0:
+            # fixed
             idx = keys[(seed - 1) % n]
-        elif control_after_generate == "increment":
+        elif control_after_generate == 1:
+            # increment
             idx = keys[(seed) % n]
-        elif control_after_generate == "decrement":
+        elif control_after_generate == 2:
+            # decrement
             idx = keys[(seed - 2) % n]
-        elif control_after_generate == "randomize":
-            if seed:
-                random.seed(seed)
+        elif control_after_generate == 3:
+            # randomize
+            random.seed(seed)
             idx = random.choice(keys)
         else:
             # fallback to fixed
             idx = keys[(seed - 1) % n]
 
-        # assemble and return prompts
+        # assemble and return prompts and return prompts
         data = sections[idx]
         pos = "\n".join(data["pos"]).strip()
         neg = "\n".join(data["neg"]).strip()
