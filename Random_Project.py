@@ -18,15 +18,15 @@ class Random_Project:
     • neg (STRING): selected negative prompt
     """
 
-@classmethod
-def INPUT_TYPES(cls):
-    return {
-        "required": {
-            "entries":                ("STRING", {"multiline": True, "default": ""}),
-            "seed":                   ("INT",    {"default": 0, "min": 0}),
-            "control_after_generate": ("INT",    {"default": 0, "min": 0, "max": 1}),
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "entries": ("STRING", {"multiline": True, "default": ""}),
+                "seed":    ("INT",    {"default": 0, "min": 0}),
+                "control_after_generate": ("INT", {"default": 0, "min": 0, "max": 1}),
+            }
         }
-    }
 
     RETURN_TYPES = ("STRING", "STRING")
     FUNCTION     = "random_project"
@@ -34,7 +34,7 @@ def INPUT_TYPES(cls):
     CATEGORY     = "hexxacubic"
 
     def random_project(self, entries, seed, control_after_generate):
-        # parse entries into sections keyed by integer identifiers
+        # Parse entries into sections keyed by integer identifiers
         sections = {}
         current = None
         for line in entries.splitlines():
@@ -55,22 +55,24 @@ def INPUT_TYPES(cls):
                     bucket = "neg" if sections[current]["in_neg"] else "pos"
                     sections[current][bucket].append(line)
 
-        # return empty if no entries
+        # Return empty strings if no sections found
         if not sections:
             return "", ""
 
-        # determine valid keys in sorted order
+        # Determine valid section keys in sorted order
         keys = sorted(sections.keys())
 
-        # choose index based on control flag
+        # Choose key based on control flag
         if control_after_generate == 0:
+            # Random selection (seed seeds RNG if >0)
             if seed:
                 random.seed(seed)
             choice = random.choice(keys)
         else:
+            # Deterministic selection via modulo
             choice = keys[(seed - 1) % len(keys)]
 
-        # assemble prompts
+        # Assemble prompts from chosen section
         data = sections[choice]
         pos = "\n".join(data["pos"]).strip()
         neg = "\n".join(data["neg"]).strip()
