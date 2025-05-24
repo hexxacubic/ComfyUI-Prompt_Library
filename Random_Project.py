@@ -3,30 +3,34 @@ import random
 class Random_Project:
     """
     Random Project Node:
-    • Ein Textfeld “entries” mit Einträgen im Format:
-        ###1
+    • entries: Multiline-String mit Einträgen im Format
+        ###X
         positive Prompt-Zeilen
         ---
         negative Prompt-Zeilen
-
-        ###2
-        …
-    • seed: ganzzahliger Seed für deterministische Auswahl (0 = kein Seed)
-    • index: feste Auswahl (wenn randomize=0)
-    • randomize: 0 = nutze index, 1 = wähle zufällig
+      für beliebige X (nicht zwingend zusammenhängend).
+    • seed: Ganzzahliger Seed (0 = kein Seed)
+    • control_after_generate: "randomize" oder "seed"
+        - randomize: wähle zufällig (optional vorinitialisiert mit seed)
+        - seed: deterministische Auswahl via Wrap-Modulo
     Outputs:
-    • pos (STRING): ausgewählter positiver Prompt
-    • neg (STRING): zugehöriger negativer Prompt
+    • pos (STRING): positiver Prompt
+    • neg (STRING): negativer Prompt
     """
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries":   ("STRING", {"multiline": True, "default": ""}),
-                "seed":      ("INT",    {"default": 0, "min": 0}),
-                "index":     ("INT",    {"default": 1, "min": 1}),
-                "randomize": ("INT",    {"default": 1, "min": 0, "max": 1}),
+                "entries":                ("STRING", {"multiline": True, "default": ""}),
+                "seed":                   ("INT",    {"default": 0, "min": 0}),
+                "control_after_generate": (
+                    "STRING",
+                    {
+                        "default": "randomize",
+                        "choices": ["randomize", "seed"]
+                    }
+                ),
             }
         }
 
@@ -35,8 +39,8 @@ class Random_Project:
     OUTPUT_NODE  = True
     CATEGORY     = "hexxacubic"
 
-    def random_project(self, entries, seed, index, randomize):
-        # Parse entries nach ###Num / --- Struktur
+    def random_project(self, entries, seed, control_after_generate):
+        # 1) Einträge parsen
         sections = {}
         current = None
         for raw in entries.splitlines():
@@ -54,28 +58,25 @@ class Random_Project:
                 if line.strip() == "---":
                     sections[current]["in_neg"] = True
                 else:
-                    if sections[current]["in_neg"]:
-                        sections[current]["neg"].append(line)
-                    else:
-                        sections[current]["pos"].append(line)
+                    bucket = "neg" if sections[current]["in_neg"] else "pos"
+                    sections[current][bucket].append(line)
 
         if not sections:
             return "", ""
 
-        # Seed setzen, falls gewünscht
-        if seed:
-            random.seed(seed)
+        # 2) Auswahl des Keys
+        sorted_keys = sorted(sections.keys())
 
-        # Auswahl des Index
-        if randomize == 1:
-            idx = random.choice(list(sections.keys()))
-        else:
-            idx = index
+        if control_after_generate == "randomize":
+            if seed:
+                random.seed(seed)
+            idx = random.choice(sorted_keys)
+        else:  # control_after_generate == "seed"
+            # wrap mit Modulo auf die Länge der vorhandenen Keys
+            idx = sorted_keys[(seed - 1) % len(sorted_keys)]
 
-        chosen = sections.get(idx)
-        if not chosen:
-            return "", ""
-
+        # 3) Prompt-Zeilen zusammensetzen
+        chosen = sections[idx]
         pos = "\n".join(chosen["pos"]).strip()
         neg = "\n".join(chosen["neg"]).strip()
         return pos, neg
