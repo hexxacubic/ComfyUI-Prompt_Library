@@ -10,9 +10,9 @@ class Random_Project:
         negative prompt lines
       for arbitrary X values (not necessarily contiguous).
     • seed: integer seed (0 = no seed), adjustable via arrows
-    • control_after_generate: dropdown selection with arrows
-        - "randomize": choose a truly random entry (seed optional for determinism)
-        - "seed": deterministic selection using (seed - 1) % number_of_entries
+    • mode: integer spinner (0 = randomize, 1 = seed)
+      - 0: choose a truly random entry (seed optional for determinism)
+      - 1: deterministic selection using (seed - 1) % number_of_entries
     Outputs:
     • pos (STRING): selected positive prompt
     • neg (STRING): selected negative prompt
@@ -22,11 +22,9 @@ class Random_Project:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "entries":                ("STRING", {"multiline": True, "default": ""}),
-                "seed":                   ("INT",    {"default": 0, "min": 0}),
-                "control_after_generate":(
-                    "STRING", {"default": "randomize", "choices": ["randomize", "seed"]}
-                ),
+                "entries": ("STRING", {"multiline": True, "default": ""}),
+                "seed":    ("INT",    {"default": 0, "min": 0}),
+                "mode":    ("INT",    {"default": 0, "min": 0, "max": 1}),
             }
         }
 
@@ -35,7 +33,7 @@ class Random_Project:
     OUTPUT_NODE  = True
     CATEGORY     = "hexxacubic"
 
-    def random_project(self, entries, seed, control_after_generate):
+    def random_project(self, entries, seed, mode):
         # parse entries into sections keyed by integer identifiers
         sections = {}
         current = None
@@ -65,11 +63,11 @@ class Random_Project:
         keys = sorted(sections.keys())
 
         # choose index
-        if control_after_generate == "randomize":
+        if mode == 0:
             if seed:
                 random.seed(seed)
             choice = random.choice(keys)
-        else:  # seed mode
+        else:
             choice = keys[(seed - 1) % len(keys)]
 
         # assemble prompts
