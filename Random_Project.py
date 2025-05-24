@@ -24,7 +24,6 @@ class Random_Project:
             "required": {
                 "entries": ("STRING", {"multiline": True, "default": ""}),
                 "seed":    ("INT",    {"default": 0, "min": 0}),
-                "control_after_generate": ("INT", {"default": 0, "min": 0, "max": 1}),
             }
         }
 
