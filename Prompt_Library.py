@@ -10,6 +10,7 @@ class Prompt_Library:
     • index slider: free int from 1 to 99  
     • randomize flag: integer 0 oder 1 für Zufall  
     • editor_content: Textfeld zum Bearbeiten (wird nicht in Projekten gespeichert)
+    • WICHTIG: Nach Dateiauswahl "Load File" Button drücken!
     • "Prompts Folder" Button öffnet den Prompt-Ordner  
     • "Refresh" Button aktualisiert die Liste der Prompt-Dateien  
     • "Load File" Button lädt die ausgewählte Datei ins Textfeld
@@ -21,6 +22,7 @@ class Prompt_Library:
         self.refresh_projects()
         self.current_file_path = None
         self.editor_content = ""  # Interner Editor-Inhalt
+        self.last_project = None  # Zum Tracking von Projekt-Wechseln
 
     def refresh_projects(self):
         # Lese die Projekte jedes Mal neu ein
@@ -86,7 +88,7 @@ class Prompt_Library:
         """Lädt den Inhalt der ausgewählten Datei ins Textfeld"""
         content = self.load_file_content(project)
         self.editor_content = content
-        return {"editor_content": content}
+        return {"ui": {"editor_content": content}}
 
     def ui_save_to_file(self, project, editor_content):
         """Speichert den Editor-Inhalt in die ausgewählte Datei"""
@@ -103,15 +105,24 @@ class Prompt_Library:
     @classmethod
     def UI_BUTTONS(cls):
         return [
-            {"label": "Prompts Folder", "method": "ui_open_prompts_folder"},
-            {"label": "Refresh", "method": "ui_refresh_projects"},
-            {"label": "Load File", "method": "ui_load_file", "params": ["project"]},
-            {"label": "Save to File", "method": "ui_save_to_file", "params": ["project", "editor_content"]},
+            {"label": "⚡ LOAD FILE ⚡", "method": "ui_load_file", "params": ["project"]},
+            {"label": "💾 Save to File", "method": "ui_save_to_file", "params": ["project", "editor_content"]},
+            {"label": "📁 Prompts Folder", "method": "ui_open_prompts_folder"},
+            {"label": "🔄 Refresh List", "method": "ui_refresh_projects"},
         ]
 
     def get_prompt(self, project, index, randomize, editor_content):
         # Nach jedem Render automatisch neu einlesen
         self.refresh_projects()
+
+        # Auto-Load wenn Projekt gewechselt wurde oder Editor leer ist
+        if project != self.last_project or not editor_content.strip():
+            self.last_project = project
+            # Lade Dateiinhalt automatisch
+            loaded_content = self.load_file_content(project)
+            if loaded_content:
+                # Trigger UI Update
+                return self.process_content(project, index, randomize, loaded_content, trigger_reload=True)
 
         # split 'category/project'
         try:
@@ -125,13 +136,10 @@ class Prompt_Library:
         if not os.path.isfile(path):
             return "", "", project, index
 
-        # Verwende Editor-Inhalt wenn vorhanden, sonst lade aus Datei
-        if editor_content.strip():
-            content_to_parse = editor_content
-        else:
-            # Lade aus Datei wenn Editor leer ist
-            content_to_parse = self.load_file_content(project)
+        return self.process_content(project, index, randomize, editor_content)
 
+    def process_content(self, project, index, randomize, content_to_parse, trigger_reload=False):
+        """Verarbeitet den Content und gibt Prompts zurück"""
         # Parse sections - auto-numbered based on ### markers
         sections = {}
         current_num = 0
@@ -190,6 +198,10 @@ class Prompt_Library:
                 pos = global_pos + ", " + pos if pos else global_pos
             if global_neg:
                 neg = global_neg + ", " + neg if neg else global_neg
+
+        # Wenn Auto-Load getriggert wurde, signalisiere UI-Update
+        if trigger_reload:
+            return {"ui": {"editor_content": content_to_parse}, "result": (pos, neg, project, idx)}
 
         return pos, neg, project, idx
 
