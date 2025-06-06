@@ -102,18 +102,11 @@ class Prompt_Library:
         return [
             {"label": "Prompts Folder", "method": "ui_open_prompts_folder"},
             {"label": "Refresh", "method": "ui_refresh_projects"},
-            {"label": "Save File", "method": "ui_save_file", "params": ["project", "file_content"]},
         ]
 
     def get_prompt(self, project, index, randomize, file_content):
         # Nach jedem Render automatisch neu einlesen
         self.refresh_projects()
-
-        # Wenn sich das Projekt geändert hat, lade den neuen Dateiinhalt
-        if project != self.last_loaded_project:
-            self.last_loaded_project = project
-            # Hier würde normalerweise die UI aktualisiert werden
-            # In ComfyUI muss das über einen speziellen Mechanismus passieren
 
         # split 'category/project'
         try:
@@ -126,6 +119,13 @@ class Prompt_Library:
         
         if not os.path.isfile(path):
             return "", "", project, index
+
+        # Auto-save beim Render - speichert den aktuellen Textfeld-Inhalt
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(file_content)
+        except Exception as e:
+            print(f"Auto-save Fehler: {str(e)}")
 
         # Parse den file_content statt die Datei zu lesen
         # So arbeiten wir mit den aktuellen Änderungen im Textfeld
@@ -169,6 +169,23 @@ class Prompt_Library:
         else:
             pos = "\n".join(lines).strip()
             neg = ""
+
+        # Global prompt (first section) voranstellen
+        if idx != 1 and 1 in sections:
+            global_lines = sections[1]
+            if '---' in global_lines:
+                sep = global_lines.index('---')
+                global_pos = "\n".join(global_lines[:sep]).strip()
+                global_neg = "\n".join(global_lines[sep+1:]).strip()
+            else:
+                global_pos = "\n".join(global_lines).strip()
+                global_neg = ""
+            
+            # Global prompts mit Komma anhängen
+            if global_pos:
+                pos = global_pos + ", " + pos if pos else global_pos
+            if global_neg:
+                neg = global_neg + ", " + neg if neg else global_neg
 
         return pos, neg, project, idx
 
