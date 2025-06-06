@@ -13,7 +13,7 @@ class Prompt_Library:
     • file reloaded every get_prompt call to reflect external changes  
     • "Prompts Folder" Button öffnet den Prompt-Ordner  
     • "Refresh" Button aktualisiert die Liste der Prompt-Dateien  
-    • "Save File" Button speichert Änderungen in die Datei
+    • "Load File" Button lädt die ausgewählte Datei ins Textfeld
     """
 
     def __init__(self):
@@ -86,6 +86,11 @@ class Prompt_Library:
         self.refresh_projects()
         return "Prompt-Liste aktualisiert."
 
+    def ui_load_file(self, project):
+        """Lädt den Inhalt der ausgewählten Datei ins Textfeld"""
+        content = self.load_file_content(project)
+        return {"file_content": content}
+
     def ui_save_file(self, project, file_content):
         """Speichert den Inhalt in die aktuell gewählte Datei"""
         try:
@@ -102,6 +107,7 @@ class Prompt_Library:
         return [
             {"label": "Prompts Folder", "method": "ui_open_prompts_folder"},
             {"label": "Refresh", "method": "ui_refresh_projects"},
+            {"label": "Load File", "method": "ui_load_file", "params": ["project"]},
         ]
 
     def get_prompt(self, project, index, randomize, file_content):
