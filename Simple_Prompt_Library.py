@@ -29,36 +29,47 @@ class Simple_Prompt_Library:
             return "", "", index
 
         # Parse sections - auto-numbered based on ### markers
+        # Index 0 = Global Prompt, Index 1-99 = normale Projekte
         sections = {}
-        current_num = 0
+        current_num = -1  # Start bei -1, wird bei erster ### zu 0
         current_lines = []
         
         for line in prompt_text.split('\n'):
             line = line.rstrip("\n")
             if line.startswith("###"):
                 # Save previous section if exists
-                if current_num > 0 and current_lines:
+                if current_num >= 0 and current_lines:
                     sections[current_num] = current_lines
                 # Start new section
                 current_num += 1
                 current_lines = []
             else:
-                if current_num > 0:  # Only collect lines after first ###
+                if current_num >= 0:  # Collect lines after first ###
                     current_lines.append(line)
         
         # Save last section if exists
-        if current_num > 0 and current_lines:
+        if current_num >= 0 and current_lines:
             sections[current_num] = current_lines
 
         # Determine final index
         if sections:
-            max_idx = len(sections)
-            if randomize_index:
-                # Zufälligen Index setzen
-                used_idx = random.randint(1, max_idx)
+            # Verfügbare Indizes: 1 bis max (ohne 0 = Global Prompt)
+            available_indices = [idx for idx in sections.keys() if idx > 0]
+            
+            if available_indices:
+                if randomize_index:
+                    # Zufälligen Index aus verfügbaren wählen (ohne Global Prompt)
+                    used_idx = random.choice(available_indices)
+                else:
+                    # Verwende den gegebenen Index, mit Wrapping wenn nötig
+                    if index in available_indices:
+                        used_idx = index
+                    else:
+                        # Wrapping mit Modulo auf verfügbare Indizes
+                        used_idx = available_indices[(index - 1) % len(available_indices)]
             else:
-                # Verwende den gegebenen Index, aber begrenzt auf verfügbare Sections
-                used_idx = min(index, max_idx)
+                # Keine normalen Projekte vorhanden
+                used_idx = 1
         else:
             used_idx = 1
 
@@ -72,9 +83,9 @@ class Simple_Prompt_Library:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        # Global prompt (first section) voranstellen
-        if used_idx != 1 and 1 in sections:
-            global_lines = sections[1]
+        # Global prompt (index 0) voranstellen
+        if used_idx != 0 and 0 in sections:
+            global_lines = sections[0]
             if '---' in global_lines:
                 sep = global_lines.index('---')
                 global_pos = "\n".join(global_lines[:sep]).strip()
