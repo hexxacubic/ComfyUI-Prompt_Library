@@ -12,11 +12,13 @@ class Prompt_Library:
     • file reloaded every get_prompt call to reflect external changes  
     • "Prompts Folder" Button öffnet den Prompt-Ordner  
     • "Refresh" Button aktualisiert die Liste der Prompt-Dateien  
+    • "Reload File" Button lädt die aktuelle Datei neu
     """
 
     def __init__(self):
         self.base = os.path.join(folder_paths.models_dir, "prompts")
         self.refresh_projects()
+        self.current_file_path = None
 
     def refresh_projects(self):
         # Lese die Projekte jedes Mal neu ein
@@ -33,9 +35,6 @@ class Prompt_Library:
 
     @classmethod
     def INPUT_TYPES(s):
-        # Die eigentliche Liste wird im Node-Objekt aktuell gehalten
-        # (siehe ui_refresh_projects und __init__)
-        # Wenn Node neu geladen oder Refresh gedrückt wird, aktualisieren wir die Choices
         instance = s()
         instance.refresh_projects()
         return {
@@ -67,16 +66,21 @@ class Prompt_Library:
         self.refresh_projects()
         return "Prompt-Liste aktualisiert."
 
+    def ui_reload_current_file(self):
+        if self.current_file_path and os.path.isfile(self.current_file_path):
+            return f"Datei neu geladen: {os.path.basename(self.current_file_path)}"
+        return "Keine Datei geladen."
+
     @classmethod
     def UI_BUTTONS(cls):
-        # Beschreibt die Buttons für die ComfyUI-Node UI
         return [
             {"label": "Prompts Folder", "method": "ui_open_prompts_folder"},
             {"label": "Refresh", "method": "ui_refresh_projects"},
+            {"label": "Reload File", "method": "ui_reload_current_file"},
         ]
 
     def get_prompt(self, project, index, randomize):
-        # Nach jedem Render automatisch neu einlesen (bereits Standard)
+        # Nach jedem Render automatisch neu einlesen
         self.refresh_projects()
 
         # split 'category/project'
@@ -86,30 +90,41 @@ class Prompt_Library:
             return "", "", project, index
 
         path = os.path.join(self.base, category, name + ".txt")
+        self.current_file_path = path
+        
         if not os.path.isfile(path):
             return "", "", project, index
 
-        # parse file sections keyed by '###N'
+        # parse file - sections now auto-numbered based on ### markers
         sections = {}
-        current = None
+        current_num = 0
+        current_lines = []
+        
         with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.rstrip("\n")
                 if line.startswith("###"):
-                    try:
-                        num = int(line[3:])
-                        current = num
-                        sections[current] = []
-                    except:
-                        current = None
-                elif current is not None:
-                    sections[current].append(line)
+                    # Save previous section if exists
+                    if current_num > 0 and current_lines:
+                        sections[current_num] = current_lines
+                    # Start new section
+                    current_num += 1
+                    current_lines = []
+                else:
+                    if current_num > 0:  # Only collect lines after first ###
+                        current_lines.append(line)
+        
+        # Save last section if exists
+        if current_num > 0 and current_lines:
+            sections[current_num] = current_lines
 
-        # determine final idx via formula
-        if sections and randomize in (0, 1):
-            max_idx = max(sections.keys())
-            idx = randomize * random.randint(1, max_idx) + (1 - randomize) * index
-            idx = int(idx)
+        # determine final idx
+        if sections:
+            max_idx = len(sections)
+            if randomize == 1:
+                idx = random.randint(1, max_idx)
+            else:
+                idx = min(index, max_idx)
         else:
             idx = index
 
