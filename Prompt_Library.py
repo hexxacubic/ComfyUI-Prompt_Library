@@ -9,18 +9,18 @@ class Prompt_Library:
     • project dropdown: '<category>/<project>' choices at init  
     • index slider: free int from 1 to 99  
     • randomize flag: integer 0 oder 1 für Zufall  
-    • file_content: zeigt und editiert den Dateiinhalt
-    • file reloaded every get_prompt call to reflect external changes  
+    • editor_content: Textfeld zum Bearbeiten (wird nicht in Projekten gespeichert)
     • "Prompts Folder" Button öffnet den Prompt-Ordner  
     • "Refresh" Button aktualisiert die Liste der Prompt-Dateien  
     • "Load File" Button lädt die ausgewählte Datei ins Textfeld
+    • "Save to File" Button speichert Änderungen in die Datei
     """
 
     def __init__(self):
         self.base = os.path.join(folder_paths.models_dir, "prompts")
         self.refresh_projects()
         self.current_file_path = None
-        self.last_loaded_project = None
+        self.editor_content = ""  # Interner Editor-Inhalt
 
     def refresh_projects(self):
         # Lese die Projekte jedes Mal neu ein
@@ -51,17 +51,13 @@ class Prompt_Library:
     def INPUT_TYPES(s):
         instance = s()
         instance.refresh_projects()
-        # Lade initial den ersten Eintrag wenn vorhanden
-        initial_content = ""
-        if instance._proj_choices:
-            initial_content = instance.load_file_content(instance._proj_choices[0])
         
         return {
             "required": {
                 "project":   (instance._proj_choices,),
                 "index":     ("INT",  {"default": 1, "min": 1, "max": 99}),
                 "randomize": ("INT",  {"default": 0, "min": 0, "max": 1}),
-                "file_content": ("STRING", {"multiline": True, "default": initial_content}),
+                "editor_content": ("STRING", {"multiline": True, "default": "", "dynamicPrompts": False}),
             }
         }
 
@@ -89,16 +85,18 @@ class Prompt_Library:
     def ui_load_file(self, project):
         """Lädt den Inhalt der ausgewählten Datei ins Textfeld"""
         content = self.load_file_content(project)
-        return {"file_content": content}
+        self.editor_content = content
+        return {"editor_content": content}
 
-    def ui_save_file(self, project, file_content):
-        """Speichert den Inhalt in die aktuell gewählte Datei"""
+    def ui_save_to_file(self, project, editor_content):
+        """Speichert den Editor-Inhalt in die ausgewählte Datei"""
         try:
             category, name = project.split("/", 1)
             path = os.path.join(self.base, category, name + ".txt")
             with open(path, "w", encoding="utf-8") as f:
-                f.write(file_content)
-            return f"Datei gespeichert: {name}.txt"
+                f.write(editor_content)
+            self.editor_content = editor_content
+            return f"Gespeichert: {name}.txt"
         except Exception as e:
             return f"Fehler beim Speichern: {str(e)}"
 
@@ -108,9 +106,10 @@ class Prompt_Library:
             {"label": "Prompts Folder", "method": "ui_open_prompts_folder"},
             {"label": "Refresh", "method": "ui_refresh_projects"},
             {"label": "Load File", "method": "ui_load_file", "params": ["project"]},
+            {"label": "Save to File", "method": "ui_save_to_file", "params": ["project", "editor_content"]},
         ]
 
-    def get_prompt(self, project, index, randomize, file_content):
+    def get_prompt(self, project, index, randomize, editor_content):
         # Nach jedem Render automatisch neu einlesen
         self.refresh_projects()
 
@@ -126,20 +125,19 @@ class Prompt_Library:
         if not os.path.isfile(path):
             return "", "", project, index
 
-        # Auto-save beim Render - speichert den aktuellen Textfeld-Inhalt
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(file_content)
-        except Exception as e:
-            print(f"Auto-save Fehler: {str(e)}")
+        # Verwende Editor-Inhalt wenn vorhanden, sonst lade aus Datei
+        if editor_content.strip():
+            content_to_parse = editor_content
+        else:
+            # Lade aus Datei wenn Editor leer ist
+            content_to_parse = self.load_file_content(project)
 
-        # Parse den file_content statt die Datei zu lesen
-        # So arbeiten wir mit den aktuellen Änderungen im Textfeld
+        # Parse sections - auto-numbered based on ### markers
         sections = {}
         current_num = 0
         current_lines = []
         
-        for line in file_content.split('\n'):
+        for line in content_to_parse.split('\n'):
             line = line.rstrip("\n")
             if line.startswith("###"):
                 # Save previous section if exists
@@ -196,6 +194,6 @@ class Prompt_Library:
         return pos, neg, project, idx
 
     @classmethod
-    def IS_CHANGED(s, project, index, randomize, file_content):
-        # Wichtig für ComfyUI um zu erkennen wenn sich das Projekt ändert
-        return f"{project}_{index}_{randomize}"
+    def IS_CHANGED(s, project, index, randomize, editor_content):
+        # Wichtig für ComfyUI um zu erkennen wenn sich Parameter ändern
+        return f"{project}_{index}_{randomize}_{hash(editor_content)}"
