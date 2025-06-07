@@ -1,0 +1,15 @@
+[project]
+name = "prompt_library"
+description = "A ComfyUI Node to save and load prompts from a library."
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/hexxacubic/ComfyUI-Prompt_Library"
+#  Used by Comfy Registry https://registry.comfy.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-Prompt_Library"
+Icon = ""
+includes = []
