@@ -13,7 +13,7 @@ class Double_Prompt_Encode:
         return {
             "required": {
                 "clip": ("CLIP",),
-                "double_prompt": ("STRING", {"multiline": True, "default": "masterpiece, best quality\n---\nworst quality, low quality"}),
+                "double_prompt": ("STRING", {"forceInput": True}),
             }
         }
 
