@@ -22,9 +22,9 @@ class Double_Prompt_Encode:
     FUNCTION = "encode_prompts"
     CATEGORY = "hexxacubic"
 
-    def encode_prompts(self, clip, text):
+    def encode_prompts(self, clip, double_prompt):
         # Parse text into positive and negative parts
-        lines = text.split('\n')
+        lines = double_prompt.split('\n')
         
         # Find separator (---, ----, or -----)
         separator_idx = -1
@@ -38,7 +38,7 @@ class Double_Prompt_Encode:
             positive_text = "\n".join(lines[:separator_idx]).strip()
             negative_text = "\n".join(lines[separator_idx+1:]).strip()
         else:
-            positive_text = text.strip()
+            positive_text = double_prompt.strip()
             negative_text = ""
         
         # Encode positive prompt
@@ -62,5 +62,5 @@ class Double_Prompt_Encode:
         return (positive_cond, negative_cond)
 
     @classmethod
-    def IS_CHANGED(s, clip, text):
-        return hash(text)
+    def IS_CHANGED(s, clip, double_prompt):
+        return hash(double_prompt)
