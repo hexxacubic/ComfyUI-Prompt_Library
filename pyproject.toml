@@ -1,7 +1,7 @@
 [project]
 name = "prompt_library"
 description = "A ComfyUI node pack for management of larger prompt amounts and prompt variations."
-version = "1.0.2"
+version = "1.0.3"
 license = {file = "LICENSE"}
 
 [project.urls]
