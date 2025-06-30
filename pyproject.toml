@@ -9,7 +9,7 @@ Repository = "https://github.com/hexxacubic/ComfyUI-Prompt_Library"
 #  Used by Comfy Registry https://registry.comfy.org
 
 [tool.comfy]
-PublisherId = ""
+PublisherId = "@hexxacubic"
 DisplayName = "ComfyUI-Prompt_Library"
 Icon = ""
 includes = []
