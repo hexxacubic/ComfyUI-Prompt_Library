@@ -1,7 +1,7 @@
 class Double_Prompt_Encode:
     """
     Double Prompt Encode - Splits text into positive/negative conditioning
-    • text: Multi-line text with positive and negative prompts
+    • double_prompt: Multi-line text with positive and negative prompts
     • Separator: --- (or ---- or -----) divides positive/negative prompts
     • Everything before separator becomes positive conditioning
     • Everything after separator becomes negative conditioning
@@ -44,22 +44,26 @@ class Double_Prompt_Encode:
         # Encode positive prompt
         if positive_text:
             positive_tokens = clip.tokenize(positive_text)
-            positive_cond = clip.encode_from_tokens(positive_tokens, return_pooled=True)
+            positive_cond, positive_pooled = clip.encode_from_tokens(positive_tokens, return_pooled=True)
+            positive_conditioning = [[positive_cond, {"pooled_output": positive_pooled}]]
         else:
             # Empty positive prompt
             empty_tokens = clip.tokenize("")
-            positive_cond = clip.encode_from_tokens(empty_tokens, return_pooled=True)
+            empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
+            positive_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
         
         # Encode negative prompt
         if negative_text:
             negative_tokens = clip.tokenize(negative_text)
-            negative_cond = clip.encode_from_tokens(negative_tokens, return_pooled=True)
+            negative_cond, negative_pooled = clip.encode_from_tokens(negative_tokens, return_pooled=True)
+            negative_conditioning = [[negative_cond, {"pooled_output": negative_pooled}]]
         else:
             # Empty negative prompt
             empty_tokens = clip.tokenize("")
-            negative_cond = clip.encode_from_tokens(empty_tokens, return_pooled=True)
+            empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
+            negative_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
         
-        return (positive_cond, negative_cond)
+        return (positive_conditioning, negative_conditioning)
 
     @classmethod
     def IS_CHANGED(s, clip, double_prompt):
