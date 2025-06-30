@@ -6,27 +6,27 @@ import subprocess
 
 class Prompt_Library:
     """
-    • project dropdown: '<category>/<project>' choices at init  
-    • index slider: free int from 1 to 99  
-    • randomize flag: integer 0 oder 1 für Zufall  
-    • editor_content: Textfeld zum Bearbeiten (wird nicht in Projekten gespeichert)
-    • WICHTIG: Nach Dateiauswahl "Load File" Button drücken!
-    • "Prompts Folder" Button öffnet den Prompt-Ordner  
-    • "Refresh" Button aktualisiert die Liste der Prompt-Dateien  
-    • "Load File" Button lädt die ausgewählte Datei ins Textfeld
-    • "Save to File" Button speichert Änderungen in die Datei
+    Prompt Library - File-based prompt management
+    • project: Select prompt file from dropdown
+    • index: Choose prompt project within file (1-999)
+    • randomize_index: When enabled, index is randomly selected
+    • global_prompt: Text field for global prompt (applied to all non-first projects)
+    • File Syntax: 
+      - Empty lines separate projects
+      - --- (or ---- or -----) separates positive/negative prompts
+      - ### at line start marks comments/notes (will be ignored)
     """
 
     def __init__(self):
         self.base = os.path.join(folder_paths.models_dir, "prompts")
         self.refresh_projects()
-        self.current_file_path = None
-        self.editor_content = ""  # Interner Editor-Inhalt
-        self.last_project = None  # Zum Tracking von Projekt-Wechseln
 
     def refresh_projects(self):
-        # Lese die Projekte jedes Mal neu ein
+        # Read projects each time
         base = self.base
+        if not os.path.exists(base):
+            os.makedirs(base)
+        
         cats = [d for d in os.listdir(base) if os.path.isdir(os.path.join(base, d))]
         proj_choices = []
         for cat in sorted(cats):
@@ -35,10 +35,10 @@ class Prompt_Library:
                 if fn.lower().endswith(".txt"):
                     name = fn[:-4]
                     proj_choices.append(f"{cat}/{name}")
-        self._proj_choices = proj_choices
+        self._proj_choices = proj_choices if proj_choices else ["No projects found"]
 
     def load_file_content(self, project):
-        """Lädt den Inhalt der ausgewählten Datei"""
+        """Load content of selected file"""
         try:
             category, name = project.split("/", 1)
             path = os.path.join(self.base, category, name + ".txt")
@@ -56,17 +56,18 @@ class Prompt_Library:
         
         return {
             "required": {
-                "project":   (instance._proj_choices,),
-                "index":     ("INT",  {"default": 1, "min": 1, "max": 99}),
-                "randomize": ("INT",  {"default": 0, "min": 0, "max": 1}),
-                "editor_content": ("STRING", {"multiline": True, "default": "", "dynamicPrompts": False}),
+                "project": (instance._proj_choices,),
+                "index": ("INT", {"default": 1, "min": 1, "max": 999}),
+                "randomize_index": ("BOOLEAN", {"default": False}),
+                "global_prompt": ("STRING", {"multiline": True, "default": "high quality, depth of field\n---\nworst quality, ugly"}),
             }
         }
 
-    RETURN_TYPES = ("STRING", "STRING", "STRING", "INT")
-    FUNCTION     = "get_prompt"
-    OUTPUT_NODE  = True
-    CATEGORY     = "hexxacubic"
+    RETURN_TYPES = ("STRING", "INT")
+    RETURN_NAMES = ("double_prompt", "used_index")
+    FUNCTION = "get_prompt"
+    OUTPUT_NODE = True
+    CATEGORY = "hexxacubic"
 
     # --- BUTTON UI ---
     @staticmethod
@@ -78,134 +79,125 @@ class Prompt_Library:
             subprocess.Popen(["open", base])
         else:
             subprocess.Popen(["xdg-open", base])
-        return "Prompts-Ordner geöffnet."
+        return "Prompts folder opened."
 
     def ui_refresh_projects(self):
         self.refresh_projects()
-        return "Prompt-Liste aktualisiert."
-
-    def ui_load_file(self, project):
-        """Lädt den Inhalt der ausgewählten Datei ins Textfeld"""
-        content = self.load_file_content(project)
-        self.editor_content = content
-        return {"ui": {"editor_content": content}}
-
-    def ui_save_to_file(self, project, editor_content):
-        """Speichert den Editor-Inhalt in die ausgewählte Datei"""
-        try:
-            category, name = project.split("/", 1)
-            path = os.path.join(self.base, category, name + ".txt")
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(editor_content)
-            self.editor_content = editor_content
-            return f"Gespeichert: {name}.txt"
-        except Exception as e:
-            return f"Fehler beim Speichern: {str(e)}"
+        return "Project list refreshed."
 
     @classmethod
     def UI_BUTTONS(cls):
         return [
-            {"label": "⚡ LOAD FILE ⚡", "method": "ui_load_file", "params": ["project"]},
-            {"label": "💾 Save to File", "method": "ui_save_to_file", "params": ["project", "editor_content"]},
             {"label": "📁 Prompts Folder", "method": "ui_open_prompts_folder"},
             {"label": "🔄 Refresh List", "method": "ui_refresh_projects"},
         ]
 
-    def get_prompt(self, project, index, randomize, editor_content):
-        # Nach jedem Render automatisch neu einlesen
-        self.refresh_projects()
-
-        # Auto-Load wenn Projekt gewechselt wurde oder Editor leer ist
-        if project != self.last_project or not editor_content.strip():
-            self.last_project = project
-            # Lade Dateiinhalt automatisch
-            loaded_content = self.load_file_content(project)
-            if loaded_content:
-                # Trigger UI Update
-                return self.process_content(project, index, randomize, loaded_content, trigger_reload=True)
-
-        # split 'category/project'
-        try:
-            category, name = project.split("/", 1)
-        except ValueError:
-            return "", "", project, index
-
-        path = os.path.join(self.base, category, name + ".txt")
-        self.current_file_path = path
+    def parse_prompt_text(self, text):
+        """Parse text into positive and negative prompts"""
+        if not text.strip():
+            return "", ""
+            
+        lines = text.split('\n')
         
-        if not os.path.isfile(path):
-            return "", "", project, index
+        # Find separator (---, ----, or -----)
+        separator_idx = -1
+        for i, line in enumerate(lines):
+            if line.strip() in ["---", "----", "-----"]:
+                separator_idx = i
+                break
+        
+        if separator_idx != -1:
+            pos = "\n".join(lines[:separator_idx]).strip()
+            neg = "\n".join(lines[separator_idx+1:]).strip()
+        else:
+            pos = text.strip()
+            neg = ""
+            
+        return pos, neg
 
-        return self.process_content(project, index, randomize, editor_content)
+    def get_prompt(self, project, index, randomize_index, global_prompt):
+        # Refresh projects list
+        self.refresh_projects()
+        
+        if project == "No projects found":
+            return "", "", index
 
-    def process_content(self, project, index, randomize, content_to_parse, trigger_reload=False):
-        """Verarbeitet den Content und gibt Prompts zurück"""
-        # Parse sections - auto-numbered based on ### markers
-        sections = {}
-        current_num = 0
+        # Load file content
+        file_content = self.load_file_content(project)
+        if not file_content.strip():
+            return "", "", index
+
+        # Parse sections - separated by empty lines
+        sections = []
         current_lines = []
         
-        for line in content_to_parse.split('\n'):
-            line = line.rstrip("\n")
-            if line.startswith("###"):
-                # Save previous section if exists
-                if current_num > 0 and current_lines:
-                    sections[current_num] = current_lines
-                # Start new section
-                current_num += 1
-                current_lines = []
+        for line in file_content.split('\n'):
+            # Remove lines starting with ### (comments)
+            if line.strip().startswith("###"):
+                continue
+                
+            # Check if line is empty
+            if not line.strip():
+                # Save current section if it has content
+                if current_lines:
+                    sections.append(current_lines)
+                    current_lines = []
             else:
-                if current_num > 0:  # Only collect lines after first ###
-                    current_lines.append(line)
+                current_lines.append(line)
         
-        # Save last section if exists
-        if current_num > 0 and current_lines:
-            sections[current_num] = current_lines
+        # Save last section if present
+        if current_lines:
+            sections.append(current_lines)
 
-        # determine final idx
-        if sections:
-            max_idx = len(sections)
-            if randomize == 1:
-                idx = random.randint(1, max_idx)
-            else:
-                idx = min(index, max_idx)
+        if not sections:
+            return "", "", index
+
+        # All sections are projects (1 to n)
+        available_indices = list(range(1, len(sections) + 1))
+        
+        # Choose final index
+        if randomize_index:
+            used_idx = random.choice(available_indices)
         else:
-            idx = index
+            if index in available_indices:
+                used_idx = index
+            else:
+                # Wrapping with modulo
+                used_idx = available_indices[(index - 1) % len(available_indices)]
 
-        # extract prompts
-        lines = sections.get(idx, [])
-        if '---' in lines:
-            sep = lines.index('---')
-            pos = "\n".join(lines[:sep]).strip()
-            neg = "\n".join(lines[sep+1:]).strip()
+        # Extract prompts from chosen section
+        section_idx = used_idx - 1  # Convert to 0-based
+        lines = sections[section_idx]
+        
+        # Find separator in section
+        separator_idx = -1
+        for i, line in enumerate(lines):
+            if line.strip() in ["---", "----", "-----"]:
+                separator_idx = i
+                break
+        
+        if separator_idx != -1:
+            pos = "\n".join(lines[:separator_idx]).strip()
+            neg = "\n".join(lines[separator_idx+1:]).strip()
         else:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        # Global prompt (first section) voranstellen
-        if idx != 1 and 1 in sections:
-            global_lines = sections[1]
-            if '---' in global_lines:
-                sep = global_lines.index('---')
-                global_pos = "\n".join(global_lines[:sep]).strip()
-                global_neg = "\n".join(global_lines[sep+1:]).strip()
-            else:
-                global_pos = "\n".join(global_lines).strip()
-                global_neg = ""
+        # Apply global prompt from text field (but not to first project)
+        if global_prompt.strip() and used_idx > 1:
+            global_pos, global_neg = self.parse_prompt_text(global_prompt)
             
-            # Global prompts mit Komma anhängen
+            # Prepend global prompts with comma
             if global_pos:
                 pos = global_pos + ", " + pos if pos else global_pos
             if global_neg:
                 neg = global_neg + ", " + neg if neg else global_neg
 
-        # Wenn Auto-Load getriggert wurde, signalisiere UI-Update
-        if trigger_reload:
-            return {"ui": {"editor_content": content_to_parse}, "result": (pos, neg, project, idx)}
-
-        return pos, neg, project, idx
+        return pos, neg, used_idx
 
     @classmethod
-    def IS_CHANGED(s, project, index, randomize, editor_content):
-        # Wichtig für ComfyUI um zu erkennen wenn sich Parameter ändern
-        return f"{project}_{index}_{randomize}_{hash(editor_content)}"
+    def IS_CHANGED(s, project, index, randomize_index, global_prompt):
+        # Always mark as changed when randomize is enabled
+        if randomize_index:
+            return float("nan")
+        return hash(project + str(index) + global_prompt)
