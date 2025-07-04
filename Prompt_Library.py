@@ -10,7 +10,6 @@ class Prompt_Library:
     • project: Select prompt file from dropdown
     • index: Choose prompt project within file (1-999)
     • randomize_index: When enabled, index is randomly selected
-    • global_prompt: Text field for global prompt (applied to all non-first projects)
     • File Syntax: 
       - Empty lines separate projects
       - --- (or ---- or -----) separates positive/negative prompts
@@ -59,7 +58,6 @@ class Prompt_Library:
                 "project": (instance._proj_choices,),
                 "index": ("INT", {"default": 1, "min": 1, "max": 999}),
                 "randomize_index": ("BOOLEAN", {"default": False}),
-                "global_prompt": ("STRING", {"multiline": True, "default": "high quality, depth of field\n---\nworst quality, ugly"}),
             }
         }
 
@@ -115,7 +113,7 @@ class Prompt_Library:
             
         return pos, neg
 
-    def get_prompt(self, project, index, randomize_index, global_prompt):
+    def get_prompt(self, project, index, randomize_index):
         # Refresh projects list
         self.refresh_projects()
         
@@ -183,21 +181,11 @@ class Prompt_Library:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        # Apply global prompt from text field (but not to first project)
-        if global_prompt.strip() and used_idx > 1:
-            global_pos, global_neg = self.parse_prompt_text(global_prompt)
-            
-            # Prepend global prompts with comma
-            if global_pos:
-                pos = global_pos + ", " + pos if pos else global_pos
-            if global_neg:
-                neg = global_neg + ", " + neg if neg else global_neg
-
         return pos, neg, used_idx
 
     @classmethod
-    def IS_CHANGED(s, project, index, randomize_index, global_prompt):
+    def IS_CHANGED(s, project, index, randomize_index):
         # Always mark as changed when randomize is enabled
         if randomize_index:
             return float("nan")
-        return hash(project + str(index) + global_prompt)
+        return hash(project + str(index))
