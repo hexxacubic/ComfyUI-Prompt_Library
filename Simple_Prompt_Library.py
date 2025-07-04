@@ -6,7 +6,6 @@ class Simple_Prompt_Library:
     • prompt_text: Multi-line text field for prompts
     • index: Selects the prompt project (1-999)
     • randomize_index: When enabled, index is randomly selected
-    • Global Prompt: When enabled, the first project is used as Global Prompt
     • Syntax: 
       - Empty lines separate projects
       - --- (or ---- or -----) separates positive/negative prompts
@@ -17,10 +16,12 @@ class Simple_Prompt_Library:
     def INPUT_TYPES(s):
         return {
             "required": {
-                "prompt_text": ("STRING", {"multiline": True, "default": "### Global Prompt\nhigh quality, depth of field\n---\nworst quality, ugly"}),
+                "prompt_text": ("STRING", {
+                    "multiline": True, 
+                    "default": "### Example Project\nhigh quality, depth of field\n---\nworst quality, ugly"
+                }),
                 "index": ("INT", {"default": 1, "min": 1, "max": 999}),
                 "randomize_index": ("BOOLEAN", {"default": False}),
-                "Global Prompt": ("BOOLEAN", {"default": True}),
             }
         }
 
@@ -30,9 +31,6 @@ class Simple_Prompt_Library:
     CATEGORY = "hexxacubic"
 
     def get_prompt(self, prompt_text, index, randomize_index, **kwargs):
-        # Access "Global Prompt" parameter with space in name
-        global_prompt_enabled = kwargs.get("Global Prompt", True)
-        
         if not prompt_text.strip():
             return ("", index)
 
@@ -59,20 +57,13 @@ class Simple_Prompt_Library:
             sections.append(current_lines)
 
         if not sections:
-            return ("", "", index)
+            return ("", index)
 
-        # Determine the index to use
-        if global_prompt_enabled:
-            # With Global Prompt: Index 0 is global, normal projects start at 1
-            available_indices = list(range(1, len(sections)))
-            global_idx = 0
-        else:
-            # Without Global Prompt: All sections are normal projects (index 1 to n)
-            available_indices = list(range(1, len(sections) + 1))
-            global_idx = None
+        # All sections are normal projects (index 1 to n)
+        available_indices = list(range(1, len(sections) + 1))
         
         if not available_indices:
-            return ("", "", index)
+            return ("", index)
             
         # Choose final index
         if randomize_index:
@@ -85,13 +76,10 @@ class Simple_Prompt_Library:
                 used_idx = available_indices[(index - 1) % len(available_indices)]
 
         # Extract prompts from chosen section
-        if global_prompt_enabled:
-            section_idx = used_idx  # Projects start at 1, sections at 0
-        else:
-            section_idx = used_idx - 1  # Without global prompt, index 1 corresponds to first section
+        section_idx = used_idx - 1  # Convert to 0-based index
             
         if section_idx >= len(sections):
-            return ("", "", used_idx)
+            return ("", used_idx)
             
         lines = sections[section_idx]
         
@@ -110,38 +98,13 @@ class Simple_Prompt_Library:
             pos = "\n".join(lines).strip()
             neg = ""
 
-        # Prepend global prompt if enabled
-        if global_prompt_enabled and global_idx is not None and used_idx > 0:
-            if len(sections) > 0:
-                global_lines = sections[0]
-                
-                # Find separator in global section
-                global_separator_idx = -1
-                for i, line in enumerate(global_lines):
-                    stripped = line.strip()
-                    if stripped in ["---", "----", "-----"]:
-                        global_separator_idx = i
-                        break
-                
-                if global_separator_idx != -1:
-                    global_pos = "\n".join(global_lines[:global_separator_idx]).strip()
-                    global_neg = "\n".join(global_lines[global_separator_idx+1:]).strip()
-                else:
-                    global_pos = "\n".join(global_lines).strip()
-                    global_neg = ""
-                
-                # Append global prompts with comma
-                if global_pos:
-                    pos = global_pos + ", " + pos if pos else global_pos
-                if global_neg:
-                    neg = global_neg + ", " + neg if neg else global_neg
-
         # Combine positive and negative with separator
         if pos and neg:
             double_prompt = f"{pos}\n---\n{neg}"
         elif pos:
             double_prompt = pos
         elif neg:
+            # Even if only negative prompt exists, include separator
             double_prompt = f"\n---\n{neg}"
         else:
             double_prompt = ""
@@ -150,8 +113,7 @@ class Simple_Prompt_Library:
 
     @classmethod
     def IS_CHANGED(s, prompt_text, index, randomize_index, **kwargs):
-        global_prompt = kwargs.get("Global Prompt", True)
         # Always mark as changed when randomize is enabled
         if randomize_index:
             return float("nan")
-        return hash(prompt_text + str(index) + str(global_prompt))
+        return hash(prompt_text + str(index))
