@@ -4,6 +4,7 @@ class Prompt_Extender:
     """
     A ComfyUI node for extending double prompts.
     Takes a double prompt input and adds extensions to both positive and negative parts.
+    Can prepend or append the additions based on the prepend_mode setting.
     """
     
     @classmethod
@@ -15,6 +16,7 @@ class Prompt_Extender:
                     "multiline": True, 
                     "default": "beautiful, high quality\n---\nblurry, low quality"
                 }),
+                "prepend_mode": ("BOOLEAN", {"default": False, "label_on": "Prepend", "label_off": "Append"}),
             }
         }
     
@@ -23,16 +25,22 @@ class Prompt_Extender:
     FUNCTION = "extend_prompts"
     CATEGORY = "hexxacubic"
 
-    def extend_prompts(self, double_prompt, prompt_additions):
+    def extend_prompts(self, double_prompt, prompt_additions, prepend_mode):
         # Parse input double prompt
         positive_prompt, negative_prompt = self._parse_double_prompt(double_prompt)
         
         # Parse additions
         positive_addition, negative_addition = self._parse_double_prompt(prompt_additions)
         
-        # Combine the prompts
-        combined_positive = self._combine_prompts(positive_prompt, positive_addition)
-        combined_negative = self._combine_prompts(negative_prompt, negative_addition)
+        # Combine the prompts based on prepend_mode
+        if prepend_mode:
+            # Prepend mode: additions come first
+            combined_positive = self._combine_prompts(positive_addition, positive_prompt)
+            combined_negative = self._combine_prompts(negative_addition, negative_prompt)
+        else:
+            # Append mode (default): additions come last
+            combined_positive = self._combine_prompts(positive_prompt, positive_addition)
+            combined_negative = self._combine_prompts(negative_prompt, negative_addition)
         
         # Return as double prompt format
         if combined_positive and combined_negative:
