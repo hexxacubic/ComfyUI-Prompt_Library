@@ -2,6 +2,8 @@
 
 A collection of ComfyUI nodes for efficient prompt management and organization. Handle multi-line prompts with positive/negative separation, create prompt libraries, and extend prompts dynamically.
 
+![grafik](https://github.com/user-attachments/assets/75f3b72e-13b3-4e3a-9b93-dbde5cc47308)
+
 ## Features
 
 - **Double Prompt Format**: All nodes use a unified format where positive and negative prompts are separated by `---` (3-5 dashes)
@@ -35,6 +37,8 @@ scenic landscape, wide angle
 ---
 people, portraits
 ```
+
+![grafik](https://github.com/user-attachments/assets/bd140e38-8e21-4d97-95d7-2eefac7ec560)
 
 ### 📁 Prompt Library
 File-based prompt management that reads `.txt` files containing complete scene descriptions.
