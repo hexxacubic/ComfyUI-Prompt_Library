@@ -37,7 +37,7 @@ class Multi_Wildcard_Loader:
     
     def get_wildcard_files(self):
         """Get list of all wildcard text files"""
-        wildcard_files = ["none"]  # Option to skip a slot
+        wildcard_files = []  # Start with empty list
         
         # Walk through wildcards directory
         for root, dirs, files in os.walk(self.wildcards_dir):
@@ -49,7 +49,7 @@ class Multi_Wildcard_Loader:
                     rel_path = rel_path.replace('\\', '/')
                     wildcard_files.append(rel_path)
         
-        return sorted(wildcard_files)
+        return ["none"] + sorted(wildcard_files)
     
     def load_random_line(self, filepath):
         """Load a random line from the specified file"""
