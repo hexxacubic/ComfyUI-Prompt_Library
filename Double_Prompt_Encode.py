@@ -45,23 +45,23 @@ class Double_Prompt_Encode:
         if positive_text:
             positive_tokens = clip.tokenize(positive_text)
             positive_cond, positive_pooled = clip.encode_from_tokens(positive_tokens, return_pooled=True)
-            positive_conditioning = [[positive_cond, {"pooled_output": positive_pooled}]]
+            positive_conditioning = [positive_cond, {"pooled_output": positive_pooled}]
         else:
             # Empty positive prompt
             empty_tokens = clip.tokenize("")
             empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
-            positive_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
+            positive_conditioning = [empty_cond, {"pooled_output": empty_pooled}]
         
         # Encode negative prompt
         if negative_text:
             negative_tokens = clip.tokenize(negative_text)
             negative_cond, negative_pooled = clip.encode_from_tokens(negative_tokens, return_pooled=True)
-            negative_conditioning = [[negative_cond, {"pooled_output": negative_pooled}]]
+            negative_conditioning = [negative_cond, {"pooled_output": negative_pooled}]
         else:
             # Empty negative prompt
             empty_tokens = clip.tokenize("")
             empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
-            negative_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
+            negative_conditioning = [empty_cond, {"pooled_output": empty_pooled}]
         
         return (positive_conditioning, negative_conditioning)
 
