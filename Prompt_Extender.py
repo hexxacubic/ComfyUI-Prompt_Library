@@ -2,8 +2,8 @@ import re
 
 class Prompt_Extender:
     """
-    A ComfyUI node for extending double prompts.
-    Takes a double prompt input and adds extensions to both positive and negative parts.
+    A ComfyUI node for building double prompts from two text fields.
+    Can also extend existing prompts when connected.
     Can prepend or append the additions based on the prepend_mode setting.
     """
     
@@ -11,12 +11,14 @@ class Prompt_Extender:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "double_prompt": ("STRING", {"forceInput": True}),
                 "prompt_additions": ("STRING", {
                     "multiline": True, 
                     "default": "beautiful, high quality\n---\nblurry, low quality"
                 }),
                 "prepend_mode": ("BOOLEAN", {"default": False, "label_on": "Prepend", "label_off": "Append"}),
+            },
+            "optional": {
+                "double_prompt": ("STRING", {"forceInput": True}),
             }
         }
     
@@ -25,7 +27,12 @@ class Prompt_Extender:
     FUNCTION = "extend_prompts"
     CATEGORY = "hexxacubic"
 
-    def extend_prompts(self, double_prompt, prompt_additions, prepend_mode):
+    def extend_prompts(self, prompt_additions, prepend_mode, double_prompt=""):
+        # If no input connected, prompt_additions becomes the main prompt
+        if not double_prompt:
+            # Just return the additions as the output
+            return (prompt_additions,)
+        
         # Parse input double prompt
         positive_prompt, negative_prompt = self._parse_double_prompt(double_prompt)
         
@@ -93,3 +100,8 @@ class Prompt_Extender:
                 return f"{base_prompt} {addition}"
         
         return base_prompt
+    
+    @classmethod
+    def IS_CHANGED(s, prompt_additions, prepend_mode, double_prompt=""):
+        # Cache based on all inputs
+        return hash(prompt_additions + str(prepend_mode) + double_prompt)
