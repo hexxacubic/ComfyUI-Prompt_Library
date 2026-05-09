@@ -17,7 +17,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
    "Simple_Prompt_Library": "Simple Prompt Library",
    "Prompt_Extender": "Prompt Extender",
    "Double_Prompt_Encode": "Double Prompt Encode",
-   "FiveRandomLines": "Five Random Lines",
+   "FiveRandomLinesNode": "Five Random Lines",
    "RandomLine": "Random Line",
 
 }
