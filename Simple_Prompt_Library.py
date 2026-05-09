@@ -1,15 +1,19 @@
 import random
+import time
 
 class Simple_Prompt_Library:
     """
-    Simple Prompt Library - Text field and index only
-    • prompt_text: Multi-line text field for prompts
-    • index: Selects the prompt project (1-999)
-    • randomize_index: When enabled, index is randomly selected
-    • Syntax: 
-      - Empty lines separate projects
-      - --- (or ---- or -----) separates positive/negative prompts
-      - ### at line start marks comments/notes (will be ignored)
+    Simple Prompt Library – Text field + seed only
+    • Empty lines separate projects (no empty lines inside a project)
+    • Lines starting with ### are project titles/comments → ignored in output
+    • --- or ---- separates positive/negative prompt (can be mid-line)
+    • Positive prompt can be empty → separator at start allowed
+    • No separator → entire text treated as positive prompt
+    • Seed behavior:
+        - -1 → random project (time-based seed), UI remains -1
+        - 0 or 1 → first project
+        - 1–999 → project index (1-based); if index exceeds count → treat as seed
+        - ≥1000 → always treat as random seed
     """
 
     @classmethod
@@ -17,103 +21,117 @@ class Simple_Prompt_Library:
         return {
             "required": {
                 "prompt_text": ("STRING", {
-                    "multiline": True, 
-                    "default": "### Example Project\nhigh quality, depth of field\n---\nworst quality, ugly"
+                    "multiline": True,
+                    "default": "### Masterpiece\nmasterpiece, best quality --- low quality, blurry"
                 }),
-                "index": ("INT", {"default": 1, "min": 1, "max": 999}),
-                "randomize_index": ("BOOLEAN", {"default": False}),
+                "random_seed": ("INT", {"default": -1, "min": -1, "max": 0xffffffffffffffff}),
             }
         }
 
     RETURN_TYPES = ("STRING", "INT")
-    RETURN_NAMES = ("double_prompt", "used_index")
+    RETURN_NAMES = ("prompt", "used_seed")
     FUNCTION = "get_prompt"
     CATEGORY = "hexxacubic"
 
-    def get_prompt(self, prompt_text, index, randomize_index, **kwargs):
+    def get_prompt(self, prompt_text, random_seed, **kwargs):
         if not prompt_text.strip():
-            return ("", index)
+            return ("", random_seed)
 
-        # Parse sections - separated by empty lines
-        sections = []
+        # --- 1. Parse projects: empty line = project boundary ---
+        projects = []
         current_lines = []
-        
+
         for line in prompt_text.split('\n'):
-            # Remove lines starting with ### (comments)
-            if line.strip().startswith("###"):
-                continue
-                
-            # Check if line is empty
-            if not line.strip():
-                # Save current section if it has content
-                if current_lines:
-                    sections.append(current_lines)
-                    current_lines = []
-            else:
-                current_lines.append(line)
-        
-        # Save last section if present
-        if current_lines:
-            sections.append(current_lines)
-
-        if not sections:
-            return ("", index)
-
-        # All sections are normal projects (index 1 to n)
-        available_indices = list(range(1, len(sections) + 1))
-        
-        if not available_indices:
-            return ("", index)
-            
-        # Choose final index
-        if randomize_index:
-            used_idx = random.choice(available_indices)
-        else:
-            if index in available_indices:
-                used_idx = index
-            else:
-                # Wrapping with modulo
-                used_idx = available_indices[(index - 1) % len(available_indices)]
-
-        # Extract prompts from chosen section
-        section_idx = used_idx - 1  # Convert to 0-based index
-            
-        if section_idx >= len(sections):
-            return ("", used_idx)
-            
-        lines = sections[section_idx]
-        
-        # Find separator (---, ----, or -----)
-        separator_idx = -1
-        for i, line in enumerate(lines):
             stripped = line.strip()
-            if stripped in ["---", "----", "-----"]:
-                separator_idx = i
-                break
-        
-        if separator_idx != -1:
-            pos = "\n".join(lines[:separator_idx]).strip()
-            neg = "\n".join(lines[separator_idx+1:]).strip()
-        else:
-            pos = "\n".join(lines).strip()
-            neg = ""
 
-        # Combine positive and negative with separator
-        if pos and neg:
-            double_prompt = f"{pos}\n---\n{neg}"
-        elif pos:
-            double_prompt = pos
-        elif neg:
-            # Even if only negative prompt exists, include separator
-            double_prompt = f"\n---\n{neg}"
-        else:
-            double_prompt = ""
+            # Empty line ends current project
+            if not stripped:
+                if current_lines:
+                    projects.append(current_lines)
+                    current_lines = []
+                continue
 
-        return (double_prompt, used_idx)
+            # ### lines are titles/comments → keep in block but ignore in output
+            if stripped.startswith("###"):
+                current_lines.append("")  # placeholder to maintain block structure
+                continue
+
+            # Regular line → preserve original formatting
+            current_lines.append(line)
+
+        # Append final project
+        if current_lines:
+            projects.append(current_lines)
+
+        if not projects:
+            return ("", random_seed)
+
+        num_projects = len(projects)
+        available_indices = list(range(1, num_projects + 1))
+
+        # --- 2. Seed / Index logic ---
+        used_seed = random_seed
+        project_idx = 1
+
+        if random_seed == -1:
+            # Random selection with time-based seed
+            actual_seed = int(time.time() * 1000000) % 0xffffffffffffffff
+            gen = random.Random(actual_seed)
+            project_idx = gen.choice(available_indices)
+            used_seed = -1  # UI stays -1
+        elif random_seed >= 1000:
+            # High values → treat as seed
+            gen = random.Random(random_seed)
+            project_idx = gen.choice(available_indices)
+            used_seed = random_seed
+        else:
+            # 0 or 1–999: try as 1-based index
+            desired_idx = 1 if random_seed <= 0 else random_seed
+            if desired_idx <= num_projects:
+                project_idx = desired_idx
+                used_seed = random_seed
+            else:
+                # Index out of range → fall back to seed
+                gen = random.Random(random_seed)
+                project_idx = gen.choice(available_indices)
+                used_seed = random_seed
+
+        # --- 3. Build selected project (exclude ### lines) ---
+        selected_lines = projects[project_idx - 1]
+        clean_lines = []
+
+        for line in selected_lines:
+            if line.strip().startswith("###"):
+                continue  # skip title lines in output
+            if line != "":  # skip placeholder empty lines
+                clean_lines.append(line)
+
+        raw_project = '\n'.join(clean_lines).strip()
+        if not raw_project:
+            return ("", used_seed)
+
+        # --- 4. Split positive / negative ---
+        separator = None
+        if '----' in raw_project:
+            separator = '----'
+        elif '---' in raw_project:
+            separator = '---'
+
+        if separator:
+            pos_part, neg_part = raw_project.split(separator, 1)
+            pos = pos_part.strip()
+            neg = neg_part.strip()
+            if pos:
+                result = f"{pos}{separator}{neg}"
+            else:
+                result = f"{separator}{neg}"  # allow empty positive
+        else:
+            result = raw_project  # all positive
+
+        return (result, used_seed)
 
     @classmethod
-    def IS_CHANGED(s, prompt_text, index, randomize_index, **kwargs):
-        # Always mark as changed when randomize is enabled
-        if randomize_index:
+    def IS_CHANGED(s, prompt_text, random_seed, **kwargs):
+        if random_seed == -1:
             return float("nan")
-        return hash(prompt_text + str(index))
+        return hash(prompt_text + str(random_seed))
