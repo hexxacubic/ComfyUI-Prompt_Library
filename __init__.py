@@ -1,26 +1,25 @@
-from .Prompt_Library import Prompt_Library
 from .Simple_Prompt_Library import Simple_Prompt_Library
 from .Prompt_Extender import Prompt_Extender
 from .Double_Prompt_Encode import Double_Prompt_Encode
-from .Multi_Wildcard_Loader import Multi_Wildcard_Loader
-from .Five_Random_Lines import FiveRandomLinesNode
+from .Five_Random_Lines import FiveRandomLinesNode
+from .Random_Line import RandomLineNode
 
 NODE_CLASS_MAPPINGS = {
-   "Prompt_Library": Prompt_Library,
    "Simple_Prompt_Library": Simple_Prompt_Library,
    "Prompt_Extender": Prompt_Extender,
    "Double_Prompt_Encode": Double_Prompt_Encode,
-   "Multi_Wildcard_Loader": Multi_Wildcard_Loader,
-   "FiveRandomLines": FiveRandomLinesNode,
+   "FiveRandomLines": FiveRandomLinesNode,
+   "RandomLine": RandomLineNode,
+
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-   "Prompt_Library": "Prompt Library",
    "Simple_Prompt_Library": "Simple Prompt Library",
    "Prompt_Extender": "Prompt Extender",
    "Double_Prompt_Encode": "Double Prompt Encode",
-   "Multi_Wildcard_Loader": "Multi Wildcard Loader",
-   "FiveRandomLines": "Five Random Lines",
+   "FiveRandomLines": "Five Random Lines",
+   "RandomLine": "Random Line",
+
 }
 
 __all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
