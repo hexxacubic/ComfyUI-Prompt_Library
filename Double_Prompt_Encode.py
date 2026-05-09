@@ -2,7 +2,8 @@ class Double_Prompt_Encode:
     """
     Double Prompt Encode - Splits text into positive/negative conditioning
     • double_prompt: Multi-line text with positive and negative prompts
-    • Separator: --- (or ---- or -----) divides positive/negative prompts
+    • Separator: --- or ---- divides positive/negative prompts
+    • Separator can appear anywhere in the text (not restricted to own line)
     • Everything before separator becomes positive conditioning
     • Everything after separator becomes negative conditioning
     • If no separator found, entire text becomes positive (negative empty)
@@ -23,46 +24,49 @@ class Double_Prompt_Encode:
     CATEGORY = "hexxacubic"
 
     def encode_prompts(self, clip, double_prompt):
-        # Parse text into positive and negative parts
-        lines = double_prompt.split('\n')
-        
-        # Find separator (---, ----, or -----)
-        separator_idx = -1
-        for i, line in enumerate(lines):
-            if line.strip() in ["---", "----", "-----"]:
-                separator_idx = i
-                break
-        
+        # Initialize positive and negative text
+        positive_text = ""
+        negative_text = ""
+
+        # Find separator (--- or ----) anywhere in the text
+        separator = None
+        if '----' in double_prompt:
+            separator = '----'
+        elif '---' in double_prompt:
+            separator = '---'
+
         # Split based on separator
-        if separator_idx != -1:
-            positive_text = "\n".join(lines[:separator_idx]).strip()
-            negative_text = "\n".join(lines[separator_idx+1:]).strip()
+        if separator:
+            positive_text, negative_text = double_prompt.split(separator, 1)
+            positive_text = positive_text.strip()
+            negative_text = negative_text.strip()
         else:
             positive_text = double_prompt.strip()
             negative_text = ""
+
+        # Encode prompts using the standard CLIP text encode method
+        # This ensures compatibility with all ComfyUI versions
         
-        # Encode positive prompt
+        # Positive conditioning
         if positive_text:
-            positive_tokens = clip.tokenize(positive_text)
-            positive_cond, positive_pooled = clip.encode_from_tokens(positive_tokens, return_pooled=True)
-            positive_conditioning = [[positive_cond, {"pooled_output": positive_pooled}]]
+            tokens = clip.tokenize(positive_text)
+            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+            positive_conditioning = [[cond, {"pooled_output": pooled}]]
         else:
-            # Empty positive prompt
-            empty_tokens = clip.tokenize("")
-            empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
-            positive_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
+            tokens = clip.tokenize("")
+            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+            positive_conditioning = [[cond, {"pooled_output": pooled}]]
         
-        # Encode negative prompt
+        # Negative conditioning
         if negative_text:
-            negative_tokens = clip.tokenize(negative_text)
-            negative_cond, negative_pooled = clip.encode_from_tokens(negative_tokens, return_pooled=True)
-            negative_conditioning = [[negative_cond, {"pooled_output": negative_pooled}]]
+            tokens = clip.tokenize(negative_text)
+            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+            negative_conditioning = [[cond, {"pooled_output": pooled}]]
         else:
-            # Empty negative prompt
-            empty_tokens = clip.tokenize("")
-            empty_cond, empty_pooled = clip.encode_from_tokens(empty_tokens, return_pooled=True)
-            negative_conditioning = [[empty_cond, {"pooled_output": empty_pooled}]]
-        
+            tokens = clip.tokenize("")
+            cond, pooled = clip.encode_from_tokens(tokens, return_pooled=True)
+            negative_conditioning = [[cond, {"pooled_output": pooled}]]
+
         return (positive_conditioning, negative_conditioning)
 
     @classmethod
