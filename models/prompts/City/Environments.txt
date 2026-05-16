@@ -1,0 +1,8 @@
+### Metropole Skyline
+metropole, skyline, urban, modern, sunlight and shadows, (futuristic:0.2), --- medieval, panorama, wide angle, bad lighting, bad quality
+
+### Urban Alley
+urban alley, contrast, sunlight and shadows, cinematic, modern --- trash, abandoned, people, human, subject, bad quality
+
+### Futuristic Mall
+mall, indoor, hall, biosphere, biotope, shopping mall, modern, (futuristic:0.4), clean --- forest, (greenhouse:0.5), plant pots, bad lighting, abandoned
